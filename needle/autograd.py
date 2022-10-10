@@ -293,6 +293,7 @@ class Tensor(Value):
 
     @property
     def data(self) -> "Tensor":
+        '''Create a detached tensor that does not require grad (a shortcut for detach())'''
         return self.detach()
 
     @data.setter
