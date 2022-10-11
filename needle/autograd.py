@@ -323,7 +323,7 @@ class Tensor(Value):
         return data.device
 
     def backward(self, out_grad=None) -> None:
-        out_grad = out_grad if out_grad else Tensor(numpy.ones(self.shape))
+        out_grad = out_grad if out_grad else Tensor(numpy.ones(self.shape, self.dtype))
         compute_gradient_of_variables(self, out_grad)
 
     def __repr__(self):
