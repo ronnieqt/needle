@@ -2,10 +2,13 @@
 
 # %% Import Libs
 
-import needle
 from typing import List, Set, Dict, Optional, NamedTuple, Tuple, Union
 from collections import namedtuple
+
 import numpy
+
+import needle
+from needle import init
 
 # %% Global Variables
 
@@ -38,10 +41,31 @@ class CPUDevice(Device):
 
     def enabled(self):
         return True
+    
+    def zeros(self, *shape, dtype="float32"):
+        return numpy.zeros(shape, dtype=dtype)
+
+    def ones(self, *shape, dtype="float32"):
+        return numpy.ones(shape, dtype=dtype)
+
+    def randn(self, *shape):
+        # note: numpy doesn't support types within standard random routines, and 
+        # .astype("float32") does work if we're generating a singleton
+        return numpy.random.randn(*shape) 
+
+    def rand(self, *shape):
+        # note: numpy doesn't support types within standard random routines, and 
+        # .astype("float32") does work if we're generating a singleton
+        return numpy.random.rand(*shape)
+
+    def one_hot(self, n, i, dtype="float32"):
+        return numpy.eye(n, dtype=dtype)[i]
+
 
 def cpu():
     """Return cpu device"""
     return CPUDevice()
+
 
 def all_devices():
     """return a list of all available devices"""
@@ -273,6 +297,8 @@ class Tensor(Value):
         tensor = Tensor.__new__(Tensor)   # construct a Tensor object
         tensor._init(op, inputs)          # populate the fields of the tensor
         if not LAZY_MODE:
+            if not tensor.requires_grad:
+                return tensor.detach()
             # carry out real computation(s) in the computational graph
             tensor.realize_cached_data()  # populate the cache_data field(s) in Value(s)
         return tensor
@@ -323,7 +349,8 @@ class Tensor(Value):
         return data.device
 
     def backward(self, out_grad=None) -> None:
-        out_grad = out_grad if out_grad else Tensor(numpy.ones(self.shape, self.dtype))
+        out_grad = out_grad if out_grad else \
+                   init.ones(*self.shape, dtype=self.dtype, device=self.device)
         compute_gradient_of_variables(self, out_grad)
 
     def __repr__(self):
@@ -465,7 +492,6 @@ def sum_node_list(node_list: List[Tensor]) -> Tensor:
     """Custom sum function in order to avoid create redundant nodes in Python sum implementation."""
     from operator import add
     from functools import reduce
-
     return reduce(add, node_list)
 
 # %% Notes
