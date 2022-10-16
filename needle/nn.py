@@ -1,11 +1,14 @@
-"""The module.
-"""
+"""The module"""
+
+# %% Import Libs
+
 from typing import List, Callable, Any
 from needle.autograd import Tensor
 from needle import ops
 import needle.init as init
 import numpy as np
 
+# %% Parameter and Module Class
 
 class Parameter(Tensor):
     """A special kind of tensor that represents parameters."""
@@ -49,8 +52,6 @@ def _child_modules(value: object) -> List["Module"]:
         return []
 
 
-
-
 class Module:
     def __init__(self):
         self.training = True
@@ -75,60 +76,81 @@ class Module:
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
 
+# %% Identity Module
 
 class Identity(Module):
-    def forward(self, x):
-        return x
+    def forward(self, X: Tensor):
+        return X
 
+# %% Linear Module
 
 class Linear(Module):
-    def __init__(self, in_features, out_features, bias=True, device=None, dtype="float32"):
+
+    def __init__(self, in_features: int, out_features: int, bias=True, device=None, dtype="float32"):
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
-
+        factory_kwargs = {"device": device, "dtype": dtype}
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        # initialize module parameters
+        self.weight = Parameter(
+            init.kaiming_uniform(in_features, out_features), **factory_kwargs
+        )
+        self.bias = Parameter(
+            init.kaiming_uniform(out_features, 1).reshape((1, out_features)), **factory_kwargs
+        ) if bias else None
         ### END YOUR SOLUTION
 
     def forward(self, X: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        N, out_features = X.shape[0], self.weight.shape[1]
+        out = X @ self.weight
+        if self.bias is not None:
+            out += self.bias.broadcast_to((N, out_features))
+        return out
         ### END YOUR SOLUTION
 
+# %% ReLU Module
 
+class ReLU(Module):
+    def forward(self, X: Tensor) -> Tensor:
+        ### BEGIN YOUR SOLUTION
+        return ops.relu(X)
+        ### END YOUR SOLUTION
+
+# %% Sequence Module
+
+class Sequential(Module):
+    def __init__(self, *modules: Module):
+        super().__init__()
+        self.modules = modules
+
+    def forward(self, X: Tensor) -> Tensor:
+        ### BEGIN YOUR SOLUTION
+        H = X
+        for m in self.modules:
+            H = m(H)
+        return H
+        ### END YOUR SOLUTION
+
+# %% Softmax Loss
+
+class SoftmaxLoss(Module):
+    def forward(self, logits: Tensor, y: Tensor):
+        ### BEGIN YOUR SOLUTION
+        # y is a list of true labels (numbers), not one-hot encoded
+        y_one_hot = init.one_hot(logits.shape[1], y)
+        losses = ops.logsumexp(logits, axes=(1,)) - ops.summation(logits * y_one_hot, axes=(1,))
+        return ops.summation(losses) / losses.shape[0]
+        ### END YOUR SOLUTION
+
+# %%
 
 class Flatten(Module):
     def forward(self, X):
         ### BEGIN YOUR SOLUTION
         raise NotImplementedError()
         ### END YOUR SOLUTION
-
-
-class ReLU(Module):
-    def forward(self, x: Tensor) -> Tensor:
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
-
-
-class Sequential(Module):
-    def __init__(self, *modules):
-        super().__init__()
-        self.modules = modules
-
-    def forward(self, x: Tensor) -> Tensor:
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
-
-
-class SoftmaxLoss(Module):
-    def forward(self, logits: Tensor, y: Tensor):
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
-
 
 
 class BatchNorm1d(Module):
@@ -183,6 +205,3 @@ class Residual(Module):
         ### BEGIN YOUR SOLUTION
         raise NotImplementedError()
         ### END YOUR SOLUTION
-
-
-
