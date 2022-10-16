@@ -41,7 +41,7 @@ class CPUDevice(Device):
 
     def enabled(self):
         return True
-    
+
     def zeros(self, *shape, dtype="float32"):
         return numpy.zeros(shape, dtype=dtype)
 
@@ -49,12 +49,12 @@ class CPUDevice(Device):
         return numpy.ones(shape, dtype=dtype)
 
     def randn(self, *shape):
-        # note: numpy doesn't support types within standard random routines, and 
+        # note: numpy doesn't support types within standard random routines, and
         # .astype("float32") does work if we're generating a singleton
-        return numpy.random.randn(*shape) 
+        return numpy.random.randn(*shape)
 
     def rand(self, *shape):
-        # note: numpy doesn't support types within standard random routines, and 
+        # note: numpy doesn't support types within standard random routines, and
         # .astype("float32") does work if we're generating a singleton
         return numpy.random.rand(*shape)
 
@@ -144,7 +144,7 @@ class TensorTupleOp(Op):
 
 class Value:
     """A value in the computational graph.
-    
+
     This class helps us to represent a NODE in the computational graph.
     """
 
@@ -401,8 +401,8 @@ class Tensor(Value):
     def matmul(self, other):
         return needle.ops.MatMul()(self, other)
 
-    def sum(self, axes=None):
-        return needle.ops.Summation(axes)(self)
+    def sum(self, axes=None, keepdims=False):
+        return needle.ops.Summation(axes, keepdims)(self)
 
     def broadcast_to(self, shape):
         return needle.ops.BroadcastTo(shape)(self)
@@ -498,7 +498,7 @@ def sum_node_list(node_list: List[Tensor]) -> Tensor:
 
 # About __new__():
 # - __new__() is a static method of the object class.
-# - When you create an instance of a class, python first 
+# - When you create an instance of a class, python first
 #       calls the __new__() method to create the object, and then
 #       calls the __init__() method to initialize the object's attributes.
 # - Signature: MyClass.__new__(class, *args, **kwargs)
@@ -506,4 +506,4 @@ def sum_node_list(node_list: List[Tensor]) -> Tensor:
 # - Python will not call the __init__() method automatically
 #       if you explicitly create a new object using the __new__() method.
 # - In practice, you use the __new__() method when you want to
-#       tweak the object at the instantiated (creation) time. 
+#       tweak the object at the instantiated (creation) time.

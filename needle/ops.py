@@ -9,7 +9,7 @@
 
 from numbers import Number
 from itertools import zip_longest
-from typing import Optional, List
+from typing import Optional, List, Union
 from .autograd import NDArray
 from .autograd import Op, Tensor, Value, TensorOp
 from .autograd import TensorTuple, TensorTupleOp
@@ -280,13 +280,15 @@ def broadcast_to(a, shape):
 # %% Summation: sum of array elements over given axes
 
 class Summation(TensorOp):
-    def __init__(self, axes: Optional[tuple] = None):
-        # TODO: improve this to handle the case when type(axes) is int
+    def __init__(self, axes: Union[None, int, tuple] = None, keepdims: bool = False):
+        if isinstance(axes, int):
+            axes = (axes,)
         self.axes = axes
+        self.keepdims = keepdims
 
     def compute(self, a):
         ### BEGIN YOUR SOLUTION
-        return array_api.sum(a, self.axes)
+        return array_api.sum(a, axis=self.axes, keepdims=self.keepdims)
         ### END YOUR SOLUTION
 
     def gradient(self, out_grad: Tensor, node: Tensor):
@@ -300,8 +302,8 @@ class Summation(TensorOp):
         ### END YOUR SOLUTION
 
 
-def summation(a, axes=None):
-    return Summation(axes)(a)
+def summation(a, axes=None, keepdims=False):
+    return Summation(axes, keepdims)(a)
 
 # %% MatMul
 
@@ -424,8 +426,7 @@ class LogSumExp(TensorOp):
             for i, n in enumerate(in_shape)
         )
         return out_grad.reshape(out_shape).broadcast_to(in_shape) \
-               * exp_X_stable \
-               / exp_X_stable.sum(self.axes).reshape(out_shape).broadcast_to(in_shape)
+               * exp_X_stable / exp_X_stable.sum(self.axes, keepdims=True)
         ### END YOUR SOLUTION
 
 
