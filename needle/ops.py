@@ -1,5 +1,10 @@
 """Operator implementations."""
 
+# INFO: about dimensionality
+# The size of out_grad will always be the size of the output of the operation.
+# The sizes of the Tensor objects returned by gradient() have to always be
+#     the same as the original inputs to the operator.
+
 # %% import libs
 
 from numbers import Number
@@ -10,11 +15,11 @@ from .autograd import Op, Tensor, Value, TensorOp
 from .autograd import TensorTuple, TensorTupleOp
 import numpy
 
-# NOTE: we will import numpy as the array_api
+# INFO: we will import numpy as the array_api
 # as the backend for our computations, this line will change in later homeworks
 import numpy as array_api
 
-# %% TODO
+# %% TODO:
 
 class MakeTensorTuple(TensorTupleOp):
     def compute(self, *args) -> tuple:
@@ -49,7 +54,7 @@ class TupleGetItem(TensorOp):
         for i, value in enumerate(node.inputs[0]):
             if i != index:
                 pass
-                # TODO
+                # TODO: added zeros_like()
                 # in_grad.append(zeros_like(value))
             else:
                 in_grad.append(out_grad)
@@ -84,9 +89,9 @@ class EWiseAdd(TensorOp):
     def gradient(self, out_grad: Tensor, node: Tensor):
         # input type Tensor (rather than NDArray) allows us to connect our
         #     gradient computations to the original foward-pass computational graph
-        # out_grad: the output adjoint 
+        # out_grad: the output adjoint
         #           (adjoint of the particular Value node this op is attached to)
-        # node    : the node corresponds to the current output value 
+        # node    : the node corresponds to the current output value
         #           (the Value node this op is atteched to)
         # this function returns the partial adjoints of each input
         return out_grad, out_grad
@@ -287,11 +292,11 @@ class Summation(TensorOp):
     def gradient(self, out_grad: Tensor, node: Tensor):
         ### BEGIN YOUR SOLUTION
         in_shape = node.inputs[0].shape
-        out_shape_keepdims = tuple(
-            1 if (self.axes is None) or (i in self.axes) else n 
+        out_shape = tuple(
+            1 if (self.axes is None) or (i in self.axes) else n
             for i, n in enumerate(in_shape)
         )
-        return broadcast_to(reshape(out_grad, out_shape_keepdims), in_shape)
+        return broadcast_to(reshape(out_grad, out_shape), in_shape)
         ### END YOUR SOLUTION
 
 
@@ -399,14 +404,28 @@ class LogSumExp(TensorOp):
     def __init__(self, axes: Optional[tuple] = None):
         self.axes = axes
 
-    def compute(self, Z):
+    def compute(self, Z: NDArray) -> NDArray:
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        max_Z = array_api.max(Z, self.axes, keepdims=True)
+        return array_api.log(
+            array_api.sum(array_api.exp(Z - max_Z), self.axes)
+        ) + array_api.squeeze(max_Z)
         ### END YOUR SOLUTION
 
-    def gradient(self, out_grad, node):
+    def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        X = node.inputs[0]
+        # TODO: whether there are better solutions?
+        c = array_api.max(X.realize_cached_data(), self.axes, keepdims=True)
+        exp_X_stable = exp(X - c)
+        in_shape = X.shape
+        out_shape = tuple(
+            1 if (self.axes is None) or (i in self.axes) else n
+            for i, n in enumerate(in_shape)
+        )
+        return out_grad.reshape(out_shape).broadcast_to(in_shape) \
+               * exp_X_stable \
+               / exp_X_stable.sum(self.axes).reshape(out_shape).broadcast_to(in_shape)
         ### END YOUR SOLUTION
 
 
