@@ -231,7 +231,7 @@ class Residual(Module):
         super().__init__()
         self.fn = fn
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, X: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        return self.fn(X) + X
         ### END YOUR SOLUTION
