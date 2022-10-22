@@ -211,18 +211,20 @@ class BatchNorm1d(Module):
                    / (self.running_var.broadcast_to((n,p)) + self.eps)**0.5
         ### END YOUR SOLUTION
 
-# %%
+# %% Dropout
 
 class Dropout(Module):
     def __init__(self, p = 0.5):
         super().__init__()
-        self.p = p
+        self.p = p  # zeros some of the elements of the input tensor with probability p
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, X: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        mask = init.randb(*X.shape, p=1-self.p)/(1-self.p) if self.training else init.ones(*X.shape)
+        return X * mask
         ### END YOUR SOLUTION
 
+# %% Residual
 
 class Residual(Module):
     def __init__(self, fn: Module):
