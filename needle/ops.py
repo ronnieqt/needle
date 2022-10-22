@@ -195,9 +195,9 @@ class DivScalar(TensorOp):
     def __init__(self, scalar):
         self.scalar = scalar
 
-    def compute(self, a):
+    def compute(self, a: NDArray):
         ### BEGIN YOUR SOLUTION
-        return a / self.scalar
+        return array_api.divide(a, self.scalar, dtype=a.dtype)
         ### END YOUR SOLUTION
 
     def gradient(self, out_grad: Tensor, node: Tensor):
@@ -391,7 +391,7 @@ class ReLU(TensorOp):
     def gradient(self, out_grad: Tensor, node: Tensor):
         ### BEGIN YOUR SOLUTION
         a = node.inputs[0].realize_cached_data()
-        return out_grad * Tensor(array_api.where(a > 0.0, 1.0, 0.0))
+        return out_grad * Tensor(array_api.where(a > 0.0, 1.0, 0.0), dtype=a.dtype)
         ### END YOUR SOLUTION
 
 
