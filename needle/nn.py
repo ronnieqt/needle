@@ -144,6 +144,31 @@ class SoftmaxLoss(Module):
         return ops.summation(losses) / losses.shape[0]
         ### END YOUR SOLUTION
 
+# %% Layer Normalization
+
+class LayerNorm1d(Module):
+    def __init__(self, dim: int, eps=1e-5, device=None, dtype="float32"):
+        super().__init__()
+        self.dim = dim  # used to init parameters
+        self.eps = eps
+        ### BEGIN YOUR SOLUTION
+        factory_kwargs = {"device": device, "dtype": dtype}
+        self.weight = Parameter(init.ones(dim, **factory_kwargs))
+        self.bias = Parameter(init.zeros(dim, **factory_kwargs))
+        ### END YOUR SOLUTION
+
+    def forward(self, X: Tensor) -> Tensor:
+        '''X: a 2D tensor with batches in the 1st dim and features on the 2nd'''
+        ### BEGIN YOUR SOLUTION
+        n, p = X.shape
+        X_mean = (X.sum(axes=(1,)) / p).reshape((n,1)).broadcast_to((n,p))
+        X_var = (((X - X_mean)**2).sum((1,)) / p).reshape((n,1)).broadcast_to((n,p))
+        # normalizing each row of X
+        X_normalized = (X - X_mean) / (X_var + self.eps)**0.5
+        return X_normalized * self.weight.broadcast_to((n,p)) \
+               + self.bias.broadcast_to((n,p))
+        ### END YOUR SOLUTION
+
 # %%
 
 class Flatten(Module):
@@ -163,21 +188,6 @@ class BatchNorm1d(Module):
         raise NotImplementedError()
         ### END YOUR SOLUTION
 
-
-    def forward(self, x: Tensor) -> Tensor:
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
-
-
-class LayerNorm1d(Module):
-    def __init__(self, dim, eps=1e-5, device=None, dtype="float32"):
-        super().__init__()
-        self.dim = dim
-        self.eps = eps
-        ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
-        ### END YOUR SOLUTION
 
     def forward(self, x: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
