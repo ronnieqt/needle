@@ -189,8 +189,8 @@ class BatchNorm1d(Module):
         factory_kwargs = {"device": device, "dtype": dtype}
         self.weight = Parameter(init.ones(dim, **factory_kwargs))
         self.bias = Parameter(init.zeros(dim, **factory_kwargs))
-        self.running_mean = Parameter(init.zeros(dim, **factory_kwargs))
-        self.running_var = Parameter(init.ones(dim, **factory_kwargs))
+        self.running_mean = init.zeros(dim, **factory_kwargs)
+        self.running_var = init.ones(dim, **factory_kwargs)
         ### END YOUR SOLUTION
 
 
@@ -200,10 +200,9 @@ class BatchNorm1d(Module):
         if self.training:
             X_mean = X.sum(axes=(0,)) / n
             X_var = ((X - X_mean.broadcast_to((n,p)))**2).sum(axes=(0,)) / n
-            self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * X_mean
-            self.running_var = (1 - self.momentum) * self.running_var + self.momentum * X_var
-            X_normalized = (X - X_mean.broadcast_to((n,p))) \
-                           / (X_var.broadcast_to((n,p)) + self.eps)**0.5
+            X_normalized = (X - X_mean.broadcast_to((n,p))) / (X_var.broadcast_to((n,p)) + self.eps)**0.5
+            self.running_mean = (1-self.momentum) * self.running_mean + self.momentum * X_mean.data
+            self.running_var = (1-self.momentum) * self.running_var + self.momentum * X_var.data
             return X_normalized * self.weight.broadcast_to((n,p)) \
                    + self.bias.broadcast_to((n,p))
         else:  # model.eval()
