@@ -163,6 +163,10 @@ class Value:
             return self.cached_data
         # note: data implicitly calls realized cached data
         self.cached_data = self.op.compute(*[x.realize_cached_data() for x in self.inputs])
+        assert self.cached_data.dtype == self.inputs[0].dtype, \
+            f"OP: {type(self.op).__name__}; " \
+            f"inputs: {', '.join([str(i.dtype) for i in self.inputs])}; " \
+            f"output: {self.cached_data.dtype}"
         return self.cached_data
 
     def is_leaf(self) -> bool:
