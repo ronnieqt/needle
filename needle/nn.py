@@ -169,31 +169,49 @@ class LayerNorm1d(Module):
                + self.bias.broadcast_to((n,p))
         ### END YOUR SOLUTION
 
-# %%
+# %% Flatten
 
 class Flatten(Module):
-    def forward(self, X):
+    def forward(self, X: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        return X.reshape((X.shape[0], -1))
         ### END YOUR SOLUTION
 
+# %% Batch Normalization
 
 class BatchNorm1d(Module):
-    def __init__(self, dim, eps=1e-5, momentum=0.1, device=None, dtype="float32"):
+    def __init__(self, dim: int, eps=1e-5, momentum=0.1, device=None, dtype="float32"):
         super().__init__()
-        self.dim = dim
+        self.dim = dim  # number of features
         self.eps = eps
         self.momentum = momentum
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        factory_kwargs = {"device": device, "dtype": dtype}
+        self.weight = Parameter(init.ones(dim, **factory_kwargs))
+        self.bias = Parameter(init.zeros(dim, **factory_kwargs))
+        self.running_mean = Parameter(init.zeros(dim, **factory_kwargs))
+        self.running_var = Parameter(init.ones(dim, **factory_kwargs))
         ### END YOUR SOLUTION
 
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, X: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        n, p = X.shape
+        if self.training:
+            X_mean = X.sum(axes=(0,)) / n
+            X_var = ((X - X_mean.broadcast_to((n,p)))**2).sum(axes=(0,)) / n
+            self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * X_mean
+            self.running_var = (1 - self.momentum) * self.running_var + self.momentum * X_var
+            X_normalized = (X - X_mean.broadcast_to((n,p))) \
+                           / (X_var.broadcast_to((n,p)) + self.eps)**0.5
+            return X_normalized * self.weight.broadcast_to((n,p)) \
+                   + self.bias.broadcast_to((n,p))
+        else:  # model.eval()
+            return (X - self.running_mean.broadcast_to((n,p))) \
+                   / (self.running_var.broadcast_to((n,p)) + self.eps)**0.5
         ### END YOUR SOLUTION
 
+# %%
 
 class Dropout(Module):
     def __init__(self, p = 0.5):
