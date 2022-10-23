@@ -137,7 +137,7 @@ class MulScalar(TensorOp):
         self.scalar = scalar
 
     def compute(self, a: NDArray):
-        return a * self.scalar
+        return array_api.multiply(a, self.scalar, dtype=a.dtype)
 
     def gradient(self, out_grad: Tensor, node: Tensor):
         return (out_grad * self.scalar,)
@@ -156,7 +156,7 @@ class PowerScalar(TensorOp):
 
     def compute(self, a: NDArray) -> NDArray:
         ### BEGIN YOUR SOLUTION
-        return array_api.power(a, self.scalar)
+        return array_api.power(a, self.scalar, dtype=a.dtype)
         ### END YOUR SOLUTION
 
     def gradient(self, out_grad: Tensor, node: Tensor):
