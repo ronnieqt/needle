@@ -200,14 +200,15 @@ class BatchNorm1d(Module):
         if self.training:
             X_mean = X.sum(axes=(0,)) / n
             X_var = ((X - X_mean.broadcast_to((n,p)))**2).sum(axes=(0,)) / n
-            X_normalized = (X - X_mean.broadcast_to((n,p))) / (X_var.broadcast_to((n,p)) + self.eps)**0.5
             self.running_mean = (1-self.momentum) * self.running_mean + self.momentum * X_mean.data
             self.running_var = (1-self.momentum) * self.running_var + self.momentum * X_var.data
-            return X_normalized * self.weight.broadcast_to((n,p)) \
-                   + self.bias.broadcast_to((n,p))
+            X_normalized = (X - X_mean.broadcast_to((n,p))) \
+                           / (X_var.broadcast_to((n,p)) + self.eps)**0.5
         else:  # model.eval()
-            return (X - self.running_mean.broadcast_to((n,p))) \
-                   / (self.running_var.broadcast_to((n,p)) + self.eps)**0.5
+            X_normalized = (X - self.running_mean.broadcast_to((n,p))) \
+                           / (self.running_var.broadcast_to((n,p)) + self.eps)**0.5
+        return X_normalized * self.weight.broadcast_to((n,p)) \
+               + self.bias.broadcast_to((n,p))
         ### END YOUR SOLUTION
 
 # %% Dropout
@@ -219,7 +220,8 @@ class Dropout(Module):
 
     def forward(self, X: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
-        mask = init.randb(*X.shape, p=1-self.p)/(1-self.p) if self.training else init.ones(*X.shape)
+        mask = init.randb(*X.shape, p=1-self.p, dtype=X.dtype) / (1-self.p) \
+               if self.training else init.ones(*X.shape)
         return X * mask
         ### END YOUR SOLUTION
 
