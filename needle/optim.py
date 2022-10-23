@@ -33,16 +33,18 @@ class SGD(Optimizer):
     def step(self):
         ### BEGIN YOUR SOLUTION
         for param in self.params:
-            # calculate gradients
+            if param.grad is None: continue
+            # calculate gradient
             param_grad = param.grad.data
             if self.weight_decay != 0:
                 param_grad += self.weight_decay * param.data
-            # update momentum terms
+            # update momentum term
             if param not in self.u:
                 self.u[param] = (1-self.momentum) * param_grad
             else:
                 self.u[param] = self.momentum * self.u[param].data + (1-self.momentum) * param_grad
-            param.data -= self.lr * self.u[param]
+            # update weights
+            param.data -= self.lr * self.u[param].data
         ### END YOUR SOLUTION
 
 # Reference: https://discuss.pytorch.org/t/how-does-sgd-weight-decay-work/33105
@@ -50,6 +52,10 @@ class SGD(Optimizer):
 # %%  Adaptive Moment Estimation (Adam) Optimizer
 
 class Adam(Optimizer):
+
+    m: Dict[ndl.nn.Parameter, ndl.Tensor]
+    v: Dict[ndl.nn.Parameter, ndl.Tensor]
+
     def __init__(
         self,
         params,
@@ -66,11 +72,31 @@ class Adam(Optimizer):
         self.eps = eps
         self.weight_decay = weight_decay
         self.t = 0
-
         self.m = {}
         self.v = {}
 
     def step(self):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        self.t += 1
+        for param in self.params:
+            if param.grad is None: continue
+            # calculate gradient
+            param_grad = param.grad.data
+            if self.weight_decay != 0:
+                param_grad += self.weight_decay * param.data
+            # update running average of gradient
+            if param not in self.m:
+                self.m[param] = (1 - self.beta1) * param_grad
+            else:
+                self.m[param] = self.beta1 * self.m[param].data + (1 - self.beta1) * param_grad
+            # update running average of square of gradient
+            if param not in self.v:
+                self.v[param] = (1 - self.beta2) * param_grad**2
+            else:
+                self.v[param] = self.beta2 * self.v[param].data + (1 - self.beta2) * param_grad**2
+            # bias correction
+            m_data = self.m[param].data / (1 - self.beta1**self.t)
+            v_data = self.v[param].data / (1 - self.beta2**self.t)
+            # update weights
+            param.data -= self.lr * m_data / (v_data**0.5 + self.eps)
         ### END YOUR SOLUTION
