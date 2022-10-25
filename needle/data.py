@@ -116,14 +116,25 @@ class DataLoader:
     def __iter__(self):
         # called at the start of iteration
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        self.batch_idx = 0
+        if self.shuffle:
+            self.ordering = np.array_split(
+                np.random.permutation(len(self.dataset)),
+                range(self.batch_size, len(self.dataset), self.batch_size)
+            )
         ### END YOUR SOLUTION
         return self
 
     def __next__(self):
         # called to grab the next mini-batch
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        if self.batch_idx < len(self.ordering):
+            idx = self.ordering[self.batch_idx]
+            batch = map(list, zip(*[self.dataset[i] for i in idx]))
+            self.batch_idx += 1
+            return tuple(Tensor(data) for data in batch)
+        else:
+            raise StopIteration
         ### END YOUR SOLUTION
 
 # %% MNIST Dataset
@@ -200,9 +211,15 @@ class MNISTDataset(Dataset):
         self.X, self.y = parse_mnist(image_filename, label_filename)
         ### END YOUR SOLUTION
 
-    def __getitem__(self, idx: int) -> Tuple[np.ndarray, np.ndarray]:
+    def __getitem__(self, idx: Union[int, slice]) -> Tuple[np.ndarray, np.ndarray]:
         ### BEGIN YOUR SOLUTION
-        return self.apply_transforms(self.X[idx,:].reshape((28,28,1))), self.y[idx]
+        X_transformed = \
+            np.apply_along_axis(
+                func1d=lambda x: self.apply_transforms(x.reshape((28,28,1))),
+                axis=1, arr=self.X[idx,:]
+            ) if isinstance(idx, slice) else \
+            self.apply_transforms(self.X[idx,:].reshape((28,28,1)))
+        return X_transformed, self.y[idx]
         ### END YOUR SOLUTION
 
     def __len__(self) -> int:
