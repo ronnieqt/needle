@@ -4,9 +4,10 @@ import gzip
 import struct
 
 import numpy as np
+
 from .autograd import Tensor
 
-from typing import Iterator, Optional, List, Sized, Union, Iterable, Any
+from typing import Iterator, Optional, List, Sized, Union, Iterable, Any, Tuple
 
 # %% Transformations
 
@@ -103,21 +104,24 @@ class DataLoader:
         batch_size: Optional[int] = 1,
         shuffle: bool = False,
     ):
-
         self.dataset = dataset
         self.shuffle = shuffle
         self.batch_size = batch_size
         if not self.shuffle:
-            self.ordering = np.array_split(np.arange(len(dataset)),
-                                           range(batch_size, len(dataset), batch_size))
+            self.ordering = np.array_split(
+                np.arange(len(dataset)),
+                range(batch_size, len(dataset), batch_size)
+            )
 
     def __iter__(self):
+        # called at the start of iteration
         ### BEGIN YOUR SOLUTION
         raise NotImplementedError()
         ### END YOUR SOLUTION
         return self
 
     def __next__(self):
+        # called to grab the next mini-batch
         ### BEGIN YOUR SOLUTION
         raise NotImplementedError()
         ### END YOUR SOLUTION
@@ -151,7 +155,7 @@ def parse_idx_file(idx_bin_data: bytes, dtype=None):
     data = struct.unpack_from(f">{n_data}{fmt_char}", idx_bin_data, offset=4*(n_dim+1))
     return np.array(data, dtype).reshape(shape)
 
-def parse_mnist(image_filename, label_filename):
+def parse_mnist(image_filename, label_filename) -> Tuple[np.ndarray, np.ndarray]:
     """ Read an images and labels file in MNIST format.  See this page:
     http://yann.lecun.com/exdb/mnist/ for a description of the file format.
 
@@ -192,17 +196,18 @@ class MNISTDataset(Dataset):
         transforms: Optional[List] = None,
     ):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        super().__init__(transforms)
+        self.X, self.y = parse_mnist(image_filename, label_filename)
         ### END YOUR SOLUTION
 
-    def __getitem__(self, index) -> object:
+    def __getitem__(self, idx: int) -> Tuple[np.ndarray, np.ndarray]:
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        return self.apply_transforms(self.X[idx,:].reshape((28,28,1))), self.y[idx]
         ### END YOUR SOLUTION
 
     def __len__(self) -> int:
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        return self.X.shape[0]
         ### END YOUR SOLUTION
 
 # %% NDArray Dataset
