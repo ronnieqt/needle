@@ -10,16 +10,14 @@
 from numbers import Number
 from itertools import zip_longest
 from typing import Optional, List
-from .autograd import NDArray
 from .autograd import Op, Tensor, Value, TensorOp
 from .autograd import TensorTuple, TensorTupleOp
+from .init import zeros_like
 import numpy
 
-# INFO: we will import numpy as the array_api
-# as the backend for our computations, this line will change in later homeworks
-import numpy as array_api
+from .backend_selection import array_api, NDArray
 
-# %% TODO:
+# %% MakeTensorTuple
 
 class MakeTensorTuple(TensorTupleOp):
     def compute(self, *args) -> tuple:
@@ -33,6 +31,7 @@ class MakeTensorTuple(TensorTupleOp):
 def make_tuple(*args):
     return MakeTensorTuple()(*args)
 
+# %% TupleGetItem
 
 class TupleGetItem(TensorOp):
     def __init__(self, index):
@@ -54,8 +53,7 @@ class TupleGetItem(TensorOp):
         for i, value in enumerate(node.inputs[0]):
             if i != index:
                 pass
-                # TODO: added zeros_like()
-                # in_grad.append(zeros_like(value))
+                in_grad.append(zeros_like(value))
             else:
                 in_grad.append(out_grad)
         return MakeTensorTuple()(*in_grad)
@@ -64,6 +62,7 @@ class TupleGetItem(TensorOp):
 def tuple_get_item(value, index):
     return TupleGetItem(index)(value)
 
+# %% FusedAddScalars
 
 class FusedAddScalars(TensorTupleOp):
     def __init__(self, c0: float, c1: float):
