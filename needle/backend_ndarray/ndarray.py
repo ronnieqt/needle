@@ -32,15 +32,15 @@ class BackendDevice:
     def randn(self, *shape, dtype="float32"):
         # note: numpy doesn't support types within standard random routines, and
         # .astype("float32") does work if we're generating a singleton
-        return NDArray(numpy.random.randn(*shape).astype(dtype), device=self)
+        return NDArray(np.random.randn(*shape).astype(dtype), device=self)
 
     def rand(self, *shape, dtype="float32"):
         # note: numpy doesn't support types within standard random routines, and
         # .astype("float32") does work if we're generating a singleton
-        return NDArray(numpy.random.rand(*shape).astype(dtype), device=self)
+        return NDArray(np.random.rand(*shape).astype(dtype), device=self)
 
     def one_hot(self, n, i, dtype="float32"):
-        return NDArray(numpy.eye(n, dtype=dtype)[i], device=self)
+        return NDArray(np.eye(n, dtype=dtype)[i], device=self)
 
     def empty(self, shape, dtype="float32"):
         dtype = "float32" if dtype is None else dtype
@@ -84,6 +84,10 @@ def all_devices():
     return [cpu(), cuda(), cpu_numpy()]
 
 
+# References:
+# https://ajcr.net/stride-guide-part-1/
+# https://ajcr.net/stride-guide-part-2/
+
 class NDArray:
     """A generic ND array class that may contain multiple different backends
     i.e., a Numpy backend, a native CPU backend, or a GPU backend.
@@ -122,6 +126,7 @@ class NDArray:
     @staticmethod
     def compact_strides(shape):
         """ Utility function to compute compact strides """
+        # strides: the number of items needed to advance one value along each dimension
         stride = 1
         res = []
         for i in range(1, len(shape) + 1):
@@ -140,7 +145,7 @@ class NDArray:
         array._offset = offset
         array._device = device if device is not None else default_device()
         if handle is None:
-            array._handle = array.device.Array(prod(shape))
+            array._handle = array.device.Array(prod(shape))  # creates a CudaArray object
         else:
             array._handle = handle
         return array
@@ -196,7 +201,7 @@ class NDArray:
             self._handle, self.shape, self.strides, self._offset
         )
 
-    def is_compact(self):
+    def is_compact(self) -> bool:
         """Return true if array is compact in memory and internal size equals product
         of the shape dimensions"""
         return (
@@ -218,6 +223,9 @@ class NDArray:
     def as_strided(self, shape, strides):
         """ Restride the matrix without copying memory. """
         assert len(shape) == len(strides)
+        # NOTE: this function should only be used on a compact matrix
+        # then, we can omit the offset argument in NDArray.make (using the default, offset=0)
+        assert self.is_compact()
         return NDArray.make(
             shape, strides=strides, device=self.device, handle=self._handle
         )
@@ -226,7 +234,7 @@ class NDArray:
     def flat(self):
         return self.reshape((self.size,))
 
-    def reshape(self, new_shape):
+    def reshape(self, new_shape: tuple):
         """
         Reshape the matrix without copying memory.  This will return a matrix
         that corresponds to a reshaped array but points to the same memory as
@@ -241,7 +249,12 @@ class NDArray:
         """
 
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        if prod(self.shape) != prod(new_shape):
+            raise ValueError(f"cannot reshape from {self.shape} to {new_shape}")
+        if not self.is_compact():
+            raise ValueError("the matrix is not compact")
+        new_strides = self.compact_strides(new_shape)
+        return self.as_strided(new_shape, new_strides)
         ### END YOUR SOLUTION
 
     def permute(self, new_axes):
@@ -264,7 +277,9 @@ class NDArray:
         """
 
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        new_shape = tuple(self.shape[i] for i in new_axes)
+        new_strides = tuple(self.strides[i] for i in new_axes)
+        return NDArray.make(new_shape, new_strides, self.device, self._handle, self._offset)
         ### END YOUR SOLUTION
 
     def broadcast_to(self, new_shape):
@@ -285,7 +300,11 @@ class NDArray:
         """
 
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        assert len(new_shape) == len(self.shape)
+        for new_s, s in zip(new_shape, self.shape):
+            assert new_s == s or s == 1, f"cannot broadcast from {self.shape} to {new_shape}"
+        new_strides = tuple(stride if s != 1 else 0 for s, stride in zip(self.shape, self.strides))
+        return NDArray.make(new_shape, new_strides, self.device, self._handle, self._offset)
         ### END YOUR SOLUTION
 
     ### Get and set elements
@@ -348,7 +367,10 @@ class NDArray:
         assert len(idxs) == self.ndim, "Need indexes equal to number of dimensions"
 
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        new_offset = sum([idx.start * stride for idx, stride in zip(idxs, self.strides)])
+        new_shape = tuple((idx.stop-1 - idx.start) // idx.step + 1 for idx in idxs)
+        new_strides = tuple(idx.step * stride for idx, stride in zip(idxs, self.strides))
+        return NDArray.make(new_shape, new_strides, self.device, self._handle, new_offset)
         ### END YOUR SOLUTION
 
     def __setitem__(self, idxs, other):
@@ -366,12 +388,12 @@ class NDArray:
             )
         else:
             self.device.scalar_setitem(
-                prod(view.shape),
-                other,
-                view._handle,
-                view.shape,
-                view.strides,
-                view._offset,
+                prod(view.shape),  # size
+                other,             # val
+                view._handle,      # out
+                view.shape,        # shape
+                view.strides,      # strides
+                view._offset,      # offset
             )
 
     ### Collection of elementwise and scalar function: add, multiply, boolean, etc
@@ -549,7 +571,7 @@ def array(a, dtype="float32", device=None):
 
 def empty(shape, dtype="float32", device=None):
     device = device if device is not None else default_device()
-    return devie.empty(shape, dtype)
+    return device.empty(shape, dtype)
 
 
 def full(shape, fill_value, dtype="float32", device=None):

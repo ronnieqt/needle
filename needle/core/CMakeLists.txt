@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.17)
 project(needle C CXX)
 
 # find correct version of Python
@@ -27,6 +27,7 @@ endif()
 include_directories(SYSTEM ${pybind11_INCLUDE_DIRS})
 list(APPEND LINKER_LIBS ${pybind11_LIBRARIES})
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 ###################
 ### CPU BACKEND ###
@@ -68,6 +69,9 @@ if(CUDA_FOUND)
     # set to 3.7 the flag of K80
     CUDA_SELECT_NVCC_ARCH_FLAGS(ARCH_FLAGS 3.7)
   endif()
+
+  # set nvcc flags
+  set(CUDA_NVCC_FLAGS "--extended-lambda -Wno-deprecated-gpu-targets")
 
   # set arch flags properly
   CUDA_ADD_LIBRARY(ndarray_backend_cuda MODULE src/ndarray_backend_cuda.cu OPTIONS ${ARCH_FLAGS})
