@@ -56,12 +56,12 @@ struct AlignedArray
 class IdxVec
 {
 private:
-    std::vector<uint32_t> m_rdata;
-    std::vector<uint32_t> m_rshape;
+    std::vector<int32_t> m_rdata;
+    std::vector<int32_t> m_rshape;
     bool m_is_end;
 
 public:
-    IdxVec(const std::vector<uint32_t>& shape)
+    IdxVec(const std::vector<int32_t>& shape)
         : m_rdata(shape.size(), 0)
         , m_rshape(shape.rbegin(), shape.rend())
         , m_is_end{shape.size() == 0 ? true : false}
@@ -96,7 +96,7 @@ public:
     {
         return m_is_end;
     }
-    uint32_t get_stride_size(const std::vector<uint32_t>& strides) const
+    int32_t get_stride_size(const std::vector<int32_t>& strides) const
     {
         return std::inner_product(
             strides.begin(), strides.end(),
@@ -121,7 +121,7 @@ void Fill(AlignedArray* out, scalar_t val)
 
 void Compact(
     const AlignedArray& a, AlignedArray* out,
-    std::vector<uint32_t> shape, std::vector<uint32_t> strides, size_t offset
+    std::vector<int32_t> shape, std::vector<int32_t> strides, size_t offset
 )
 {
     /**
@@ -152,7 +152,7 @@ void Compact(
 
 void EwiseSetitem(
     const AlignedArray& a, AlignedArray* out,
-    std::vector<uint32_t> shape, std::vector<uint32_t> strides, size_t offset
+    std::vector<int32_t> shape, std::vector<int32_t> strides, size_t offset
 )
 {
     /**
@@ -179,7 +179,7 @@ void EwiseSetitem(
 
 void ScalarSetitem(
     const size_t size, scalar_t val, AlignedArray* out,
-    std::vector<uint32_t> shape, std::vector<uint32_t> strides, size_t offset
+    std::vector<int32_t> shape, std::vector<int32_t> strides, size_t offset
 )
 {
     /**
@@ -381,10 +381,10 @@ void Matmul(
      */
 
     /// BEGIN YOUR SOLUTION
-    for (size_t i = 0; i < m; ++i) {
-        for (size_t j = 0; j < p; ++j) {
+    for (uint32_t i = 0; i < m; ++i) {
+        for (uint32_t j = 0; j < p; ++j) {
             out->ptr[i * p + j] = 0;
-            for (size_t k = 0; k < n; ++k) {
+            for (uint32_t k = 0; k < n; ++k) {
                 out->ptr[i * p + j] += a.ptr[i * n + k] * b.ptr[k * p + j];
             }
         }

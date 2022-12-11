@@ -1,6 +1,10 @@
+import pytest
 import numpy as np
 import needle as ndl
 import needle.nn as nn
+
+if ndl.BACKEND == "nd":
+    pytest.skip("numpy backend required", allow_module_level=True)
 
 """Deterministically generate a matrix"""
 def get_tensor(*shape, entropy=1):

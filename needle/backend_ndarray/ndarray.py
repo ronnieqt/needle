@@ -1,6 +1,9 @@
+# %% import libs
+
 import operator
 import math
 from functools import reduce
+from typing import Union, Tuple
 import numpy as np
 from . import ndarray_backend_numpy
 from . import ndarray_backend_cpu
@@ -9,6 +12,7 @@ from . import ndarray_backend_cpu
 def prod(x):
     return reduce(operator.mul, x, 1)
 
+# %% Backend Device
 
 class BackendDevice:
     """A backend device, wraps the implementation module."""
@@ -83,6 +87,7 @@ def all_devices():
     """return a list of all available devices"""
     return [cpu(), cuda(), cpu_numpy()]
 
+# %% NDArray
 
 # References:
 # https://ajcr.net/stride-guide-part-1/
@@ -178,7 +183,8 @@ class NDArray:
         return prod(self._shape)
 
     def __repr__(self):
-        return "NDArray(" + self.numpy().__str__() + f", device={self.device})"
+        return "NDArray(" + self.numpy().__str__().replace("\n", "\n"+" "*8) \
+            + f",device={self.device})"
 
     def __str__(self):
         return self.numpy().__str__()
@@ -256,6 +262,18 @@ class NDArray:
         new_strides = self.compact_strides(new_shape)
         return self.as_strided(new_shape, new_strides)
         ### END YOUR SOLUTION
+
+    def squeeze(self):
+        """
+        Remove axes of length one (without copying memory).
+        Raises:
+            ValueError if the matrix is not compact.
+        Returns:
+            NDArray : reshaped array; this will point to the same memory as the original NDArray.
+        """
+        new_shape = tuple(axis for axis in self.shape if axis > 1)
+        if len(new_shape) == 0: new_shape = (1,)
+        return self.compact().reshape(new_shape)
 
     def permute(self, new_axes):
         """
@@ -367,7 +385,7 @@ class NDArray:
         assert len(idxs) == self.ndim, "Need indexes equal to number of dimensions"
 
         ### BEGIN YOUR SOLUTION
-        new_offset = sum([idx.start * stride for idx, stride in zip(idxs, self.strides)])
+        new_offset = np.sum([idx.start * stride for idx, stride in zip(idxs, self.strides)])
         new_shape = tuple((idx.stop-1 - idx.start) // idx.step + 1 for idx in idxs)
         new_strides = tuple(idx.step * stride for idx, stride in zip(idxs, self.strides))
         return NDArray.make(new_shape, new_strides, self.device, self._handle, new_offset)
@@ -404,7 +422,8 @@ class NDArray:
         """
         out = NDArray.make(self.shape, device=self.device)
         if isinstance(other, NDArray):
-            assert self.shape == other.shape, "operation needs two equal-sized arrays"
+            assert self.shape == other.shape, \
+                f"[{self.shape} != {other.shape}] operation needs two equal-sized arrays"
             ewise_func(self.compact()._handle, other.compact()._handle, out._handle)
         else:
             scalar_func(self.compact()._handle, other, out._handle)
@@ -513,7 +532,7 @@ class NDArray:
             def tile(a, tile):
                 return a.as_strided(
                     (a.shape[0] // tile, a.shape[1] // tile, tile, tile),
-                    (a.shape[1] * tile, tile, self.shape[1], 1),
+                    (a.shape[1] * tile, tile, a.shape[1], 1),
                 )
 
             t = self.device.__tile_size__
@@ -536,31 +555,67 @@ class NDArray:
             return out
 
     ### Reductions, i.e., sum/max over all element or over given axis
-    def reduce_view_out(self, axis):
+    def reduce_view_out(self, axis, keepdims=False):
         """ Return a view to the array set up for reduction functions and output array. """
+        if isinstance(axis, (tuple, list)) and not axis:
+            raise ValueError("Empty axis in reduce")
         if axis is None:
-            view = self.reshape((1,) * (self.ndim - 1) + (prod(self.shape),))
-            out = NDArray.make((1,) * self.ndim, device=self.device)
+            view = self.compact().reshape((1,) * (self.ndim - 1) + (prod(self.shape),))
+            out = NDArray.make((1,) * (self.ndim if keepdims else 1), device=self.device)
         else:
+            if isinstance(axis, (tuple, list)):
+                assert len(axis) == 1, "Only support reduction over a single axis"
+                axis = axis[0]
+            assert -self.ndim <= axis < self.ndim, \
+                   f"axis {axis} is out of range [{-self.ndim}, {self.ndim})"
+            if axis < 0: axis += self.ndim
             view = self.permute(
                 tuple([a for a in range(self.ndim) if a != axis]) + (axis,)
             )
             out = NDArray.make(
-                tuple([1 if i == axis else s for i, s in enumerate(self.shape)]),
+                tuple([1 if i == axis else s for i, s in enumerate(self.shape)])
+                if keepdims else
+                tuple([s for i, s in enumerate(self.shape) if i != axis]),
                 device=self.device,
             )
         return view, out
 
-    def sum(self, axis=None):
-        view, out = self.reduce_view_out(axis)
+    def sum(self, axis=None, keepdims=False):
+        view, out = self.reduce_view_out(axis, keepdims=keepdims)
         self.device.reduce_sum(view.compact()._handle, out._handle, view.shape[-1])
         return out
 
-    def max(self, axis=None):
-        view, out = self.reduce_view_out(axis)
+    def max(self, axis=None, keepdims=False):
+        view, out = self.reduce_view_out(axis, keepdims=keepdims)
         self.device.reduce_max(view.compact()._handle, out._handle, view.shape[-1])
         return out
 
+    def flip(self, axes):
+        """
+        Flip this ndarray along the specified axes.
+        Note: compact() before returning.
+        """
+        ### BEGIN YOUR SOLUTION
+        raise NotImplementedError()
+        ### END YOUR SOLUTION
+
+    def pad(self, axes: Tuple[Tuple[int]]):
+        """
+        Pad this ndarray by zeros by the specified amount in `axes`,
+        which lists for _all_ axes the left and right padding amount, e.g.,
+        axes = ( (0, 0), (1, 1), (0, 0) ) pads the middle axis with a 0 on the left and right side.
+        """
+        ### BEGIN YOUR SOLUTION
+        assert len(axes) == len(self.shape), \
+            f"The provided axes [{axes}] is inconsistent with shape [{self.shape}]"
+        new_shape = tuple(s + np.sum(axes[i]) for i, s in enumerate(self.shape))
+        res = full(new_shape, fill_value=0, dtype=self.dtype, device=self.device)
+        idx = tuple(slice(axes[i][0], axes[i][0]+s) for i, s in enumerate(self.shape))
+        res[idx] = self
+        return res
+        ### END YOUR SOLUTION
+
+# %% array_api functions
 
 def array(a, dtype="float32", device=None):
     """ Convenience methods to match numpy a bit more closely."""
@@ -581,3 +636,65 @@ def full(shape, fill_value, dtype="float32", device=None):
 
 def broadcast_to(array, new_shape):
     return array.broadcast_to(new_shape)
+
+
+def reshape(array: NDArray, new_shape: tuple):
+    return array.reshape(new_shape)
+
+
+def swapaxes(array: NDArray, axis1: int, axis2: int):
+    new_axes = [*range(array.ndim)]
+    new_axes[axis1], new_axes[axis2] = new_axes[axis2], new_axes[axis1]
+    return array.permute(new_axes)
+
+
+def matmul(lhs: NDArray, rhs: NDArray):
+    return lhs @ rhs
+
+
+def sum(array: NDArray, axes: Union[None, int, tuple] = None, keepdims=False):
+    if axes is None:
+        res = array.sum()
+    elif isinstance(axes, int):
+        res = array.sum(axes)
+    else:
+        res = array
+        for axis in axes:
+            res = res.sum(axis)
+    return res if keepdims else res.squeeze()
+
+
+def summation(a, axis=None, keepdims=False):
+    return a.sum(axis=axis, keepdims=keepdims)
+
+
+def negative(array: NDArray) -> NDArray:
+    return -array
+
+
+def maximum(a, b):
+    return a.maximum(b)
+
+
+def max(array: NDArray, axis=None, keepdims=False) -> NDArray:
+    return array.max(axis, keepdims)
+
+
+def log(array: NDArray) -> NDArray:
+    return array.log()
+
+
+def exp(array: NDArray) -> NDArray:
+    return array.exp()
+
+
+def tanh(array: NDArray) -> NDArray:
+    return array.tanh()
+
+
+def flip(a, axes):
+    return a.flip(axes)
+
+
+def squeeze(a):
+    return a.squeeze()

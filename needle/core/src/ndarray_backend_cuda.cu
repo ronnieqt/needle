@@ -71,10 +71,10 @@ CudaDims CudaOneDim(size_t size)
 struct CudaVec
 {
     uint32_t size;
-    uint32_t data[MAX_VEC_SIZE];
+    int32_t data[MAX_VEC_SIZE];
 };
 
-CudaVec VecToCuda(const std::vector<uint32_t>& x)
+CudaVec VecToCuda(const std::vector<int32_t>& x)
 {
     CudaVec shape;
     if (x.size() > MAX_VEC_SIZE)
@@ -112,7 +112,7 @@ __device__ CudaVec get_compact_strides(const CudaVec& shape)
 {
     CudaVec compact_strides;
     compact_strides.size = shape.size;
-    uint32_t shape_cumprod = 1;
+    int32_t shape_cumprod = 1;
     for (uint32_t i = shape.size; i > 0; --i) {
         compact_strides.data[i - 1] = shape_cumprod;
         shape_cumprod *= shape.data[i - 1];
@@ -172,7 +172,7 @@ __global__ void CompactKernel(
 
 void Compact(
     const CudaArray& a, CudaArray* out,
-    std::vector<uint32_t> shape, std::vector<uint32_t> strides, size_t offset
+    std::vector<int32_t> shape, std::vector<int32_t> strides, size_t offset
 )
 {
     /**
@@ -222,7 +222,7 @@ __global__ void EwiseSetitemKernel(
 
 void EwiseSetitem(
     const CudaArray& a, CudaArray* out,
-    std::vector<uint32_t> shape, std::vector<uint32_t> strides, size_t offset
+    std::vector<int32_t> shape, std::vector<int32_t> strides, size_t offset
 )
 {
     /**
@@ -269,7 +269,7 @@ __global__ void ScalarSetitemKernel(
 
 void ScalarSetitem(
     size_t size, scalar_t val, CudaArray* out,
-    std::vector<uint32_t> shape, std::vector<uint32_t> strides, size_t offset
+    std::vector<int32_t> shape, std::vector<int32_t> strides, size_t offset
 )
 {
     /**

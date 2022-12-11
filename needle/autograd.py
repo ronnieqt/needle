@@ -10,7 +10,7 @@ import numpy
 import needle
 from needle import init
 
-from .backend_selection import Device, array_api, NDArray, default_device
+from .backend_selection import Device, array_api, NDArray, default_device, BACKEND
 
 # %% Global Variables
 
@@ -110,10 +110,10 @@ class Value:
             return self.cached_data
         # note: data implicitly calls realized cached data
         self.cached_data = self.op.compute(*[x.realize_cached_data() for x in self.inputs])
-        assert self.cached_data.dtype == self.inputs[0].dtype, \
-            f"OP: {type(self.op).__name__}; " \
-            f"inputs: {', '.join([str(i.dtype) for i in self.inputs])}; " \
-            f"output: {self.cached_data.dtype}"
+        # assert self.cached_data.dtype == self.inputs[0].dtype, \
+        #     f"OP: {type(self.op).__name__}; " \
+        #     f"inputs: {', '.join([str(i.dtype) for i in self.inputs])}; " \
+        #     f"output: {self.cached_data.dtype}"
         return self.cached_data
 
     def is_leaf(self) -> bool:
@@ -163,6 +163,12 @@ class Value:
                 return value.detach()
             value.realize_cached_data()
         return value
+
+    def numpy(self) -> numpy.ndarray:
+        data = self.realize_cached_data()
+        if array_api is numpy:
+            return data
+        return data.numpy() if not isinstance(data, tuple) else [x.numpy() for x in data]
 
 
 ### Not needed in HW1
@@ -214,7 +220,7 @@ class Tensor(Value):
             if device is None:
                 device = array.device
             if dtype is None:
-                dtype = array.dtype
+                dtype = "float32" if (BACKEND == "nd") else array.dtype
             if device == array.device and dtype == array.dtype:
                 cached_data = array.realize_cached_data()
             else:
@@ -294,7 +300,6 @@ class Tensor(Value):
     @property
     def device(self):
         data = self.realize_cached_data()
-        # numpy array always sits on cpu
         if array_api is numpy:
             return default_device()
         return data.device
@@ -309,12 +314,6 @@ class Tensor(Value):
 
     def __str__(self):
         return self.realize_cached_data().__str__()
-
-    def numpy(self) -> numpy.ndarray:
-        data = self.realize_cached_data()
-        if array_api is numpy:
-            return data
-        return data.numpy()
 
     def __add__(self, other):
         if isinstance(other, Tensor):
@@ -339,6 +338,12 @@ class Tensor(Value):
             return needle.ops.EWiseAdd()(self, needle.ops.Negate()(other))
         else:
             return needle.ops.AddScalar(-other)(self)
+
+    def __rsub__(self, other):
+        if isinstance(other, Tensor):
+            return needle.ops.EWiseAdd()(needle.ops.Negate()(self), other)
+        else:
+            return needle.ops.AddScalar(other)(-self)
 
     def __truediv__(self, other):
         if isinstance(other, Tensor):
@@ -369,7 +374,6 @@ class Tensor(Value):
 
     __radd__ = __add__
     __rmul__ = __mul__
-    __rsub__ = __sub__
     __rmatmul__ = __matmul__
 
 # %% Helpers

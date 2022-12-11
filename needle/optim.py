@@ -1,5 +1,6 @@
 """Optimization module"""
 
+import numpy as np
 from typing import Dict, Iterable
 
 import needle as ndl
@@ -46,6 +47,18 @@ class SGD(Optimizer):
             # update weights
             param.data -= self.lr * self.u[param].data
         ### END YOUR SOLUTION
+
+    def clip_grad_norm(self, max_norm=0.25):
+        """
+        Clips gradient norm of parameters.
+        """
+        total_norm = np.linalg.norm(
+            np.array([np.linalg.norm(p.grad.detach().numpy()).reshape((1,)) for p in self.params])
+        )
+        clip_coef = max_norm / (total_norm + 1e-6)
+        clip_coef_clamped = min((np.asscalar(clip_coef), 1.0))
+        for p in self.params:
+            p.grad = p.grad.detach() * clip_coef_clamped
 
 # Reference: https://discuss.pytorch.org/t/how-does-sgd-weight-decay-work/33105
 
