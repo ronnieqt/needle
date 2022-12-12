@@ -522,7 +522,7 @@ class Split(TensorTupleOp):
         return tuple(res)
         ### END YOUR SOLUTION
 
-    def gradient(self, out_grad, node):
+    def gradient(self, out_grad: Tensor, node: Tensor):
         ### BEGIN YOUR SOLUTION
         # out_grad    : same size as the output of this op
         # return value: same size as the input of this op
@@ -544,7 +544,7 @@ class Flip(TensorOp):
         return a.flip(self.axes)
         ### END YOUR SOLUTION
 
-    def gradient(self, out_grad, node):
+    def gradient(self, out_grad: Tensor, node: Tensor):
         ### BEGIN YOUR SOLUTION
         return flip(out_grad, self.axes)
         ### END YOUR SOLUTION
@@ -553,46 +553,64 @@ class Flip(TensorOp):
 def flip(a, axes):
     return Flip(axes)(a)
 
-# %%
+# %% Dilate and UnDilate
 
 class Dilate(TensorOp):
     def __init__(self, axes: tuple, dilation: int):
         self.axes = axes
         self.dilation = dilation
 
-    def compute(self, a):
+    def compute(self, a: NDArray):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        new_shape = tuple(
+            s + (s*self.dilation if (i in self.axes) else 0)
+            for i, s in enumerate(a.shape)
+        )
+        res = array_api.full(new_shape, fill_value=0, dtype=a.dtype, device=a.device)
+        idxs = tuple(
+            slice(0, s, self.dilation+1 if (i in self.axes) else 1)
+            for i, s in enumerate(new_shape)
+        )
+        res[idxs] = a
+        return res
         ### END YOUR SOLUTION
 
-    def gradient(self, out_grad, node):
+    def gradient(self, out_grad: Tensor, node: Tensor):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        return undilate(out_grad, self.axes, self.dilation)
         ### END YOUR SOLUTION
 
 
 def dilate(a, axes, dilation):
     return Dilate(axes, dilation)(a)
 
+
 class UnDilate(TensorOp):
     def __init__(self, axes: tuple, dilation: int):
         self.axes = axes
         self.dilation = dilation
 
-    def compute(self, a):
+    def compute(self, a: NDArray):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        idxs = tuple(
+            slice(0, s, self.dilation+1 if (i in self.axes) else 1)
+            for i, s in enumerate(a.shape)
+        )
+        return a[idxs].compact()
         ### END YOUR SOLUTION
 
-    def gradient(self, out_grad, node):
+    def gradient(self, out_grad: Tensor, node: Tensor):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        # out_grad    : same size as the output of this op
+        # return value: same size as the input of this op
+        return dilate(out_grad, self.axes, self.dilation)
         ### END YOUR SOLUTION
 
 
 def undilate(a, axes, dilation):
     return UnDilate(axes, dilation)(a)
 
+# %% Conv
 
 class Conv(TensorOp):
     def __init__(self, stride: Optional[int] = 1, padding: Optional[int] = 0):
