@@ -3,7 +3,7 @@
 import operator
 import math
 from functools import reduce
-from typing import Union, Tuple
+from typing import Union, Tuple, Optional
 import numpy as np
 from . import ndarray_backend_numpy
 from . import ndarray_backend_cpu
@@ -129,7 +129,7 @@ class NDArray:
         self._handle = other._handle
 
     @staticmethod
-    def compact_strides(shape):
+    def compact_strides(shape: Tuple[int]):
         """ Utility function to compute compact strides """
         # strides: the number of items needed to advance one value along each dimension
         stride = 1
@@ -137,6 +137,16 @@ class NDArray:
         for i in range(1, len(shape) + 1):
             res.append(stride)
             stride *= shape[-i]
+        return tuple(res[::-1])
+
+    @staticmethod
+    def compact_offsets(shape: Tuple[int]):
+        """ Utility function to compute compact offsets """
+        shape_cumprod = 1
+        res = []
+        for i in range(1, len(shape)+1):
+            res.append((shape[-i] - 1) * shape_cumprod)
+            shape_cumprod *= shape[-i]
         return tuple(res[::-1])
 
     @staticmethod
@@ -590,13 +600,17 @@ class NDArray:
         self.device.reduce_max(view.compact()._handle, out._handle, view.shape[-1])
         return out
 
-    def flip(self, axes):
+    def flip(self, axes: Optional[Tuple[int]]):
         """
         Flip this ndarray along the specified axes.
         Note: compact() before returning.
         """
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        offsets = NDArray.compact_offsets(self.shape)
+        _axes = tuple(self.ndim + axis if (axis < 0) else axis for axis in axes)
+        new_offset = np.inner(offsets, tuple(1 if (i in _axes) else 0 for i in range(self.ndim)))
+        new_strides = tuple(-s if (i in _axes) else s for i, s in enumerate(self.strides))
+        return NDArray.make(self.shape, new_strides, self.device, self._handle, new_offset).compact()
         ### END YOUR SOLUTION
 
     def pad(self, axes: Tuple[Tuple[int]]):

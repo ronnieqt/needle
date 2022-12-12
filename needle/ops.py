@@ -524,34 +524,36 @@ class Split(TensorTupleOp):
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        # out_grad    : same size as the output of this op
+        # return value: same size as the input of this op
+        return stack(out_grad, self.axis)
         ### END YOUR SOLUTION
 
 
 def split(a, axis):
     return Split(axis)(a)
 
-# %%
+# %% Flip
 
 class Flip(TensorOp):
     def __init__(self, axes: Optional[tuple] = None):
         self.axes = axes
 
-    def compute(self, a):
+    def compute(self, a: NDArray):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        return a.flip(self.axes)
         ### END YOUR SOLUTION
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        return flip(out_grad, self.axes)
         ### END YOUR SOLUTION
 
 
 def flip(a, axes):
     return Flip(axes)(a)
 
-
+# %%
 
 class Dilate(TensorOp):
     def __init__(self, axes: tuple, dilation: int):
