@@ -239,9 +239,7 @@ class NDArray:
     def as_strided(self, shape, strides):
         """ Restride the matrix without copying memory. """
         assert len(shape) == len(strides)
-        # NOTE: this function should only be used on a compact matrix
-        # then, we can omit the offset argument in NDArray.make (using the default, offset=0)
-        assert self.is_compact()
+        assert self._offset == 0
         return NDArray.make(
             shape, strides=strides, device=self.device, handle=self._handle
         )
