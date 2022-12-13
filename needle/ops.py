@@ -635,9 +635,49 @@ class Conv(TensorOp):
         return out.compact().reshape((N, H_out, W_out, C_out))
         ### END YOUR SOLUTION
 
-    def gradient(self, out_grad, node):
+    def gradient(self, out_grad: Tensor, node: Tensor):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        # Z, Z_grad : (n_batch, n_in_height, n_in_width, n_in_channels)
+        # W, W_grad : (n_kernel, n_kernel, n_in_channels, n_out_channels)
+        #  out_grad : (n_batch, n_out_height, n_out_width, n_out_channels)
+        Z, W = node.inputs
+        kernel_size = W.shape[0]
+        # arg0 : (n_batch, n_out_height, n_out_width, n_out_channels)
+        # arg1 : (n_kernel, n_kernel, n_out_channels, n_in_channels)
+        #  ret : (n_batch, n_in_height, n_in_width, n_in_channels)
+        #
+        #    n_out = (n_in + 2*self.padding - n_kernel + 1)
+        #     n_in = (n_out - 2*self.padding + n_kernel - 1)
+        #          = (n_out + 2*padding - n_kernel + 1)
+        # paddding = n_kernel - self.padding - 1
+        #
+        Z_grad = conv(
+            out_grad,
+            flip(W, (0,1)).transpose((2,3)),
+            stride=1,
+            padding=kernel_size-self.padding-1
+        )
+        #        Z : (n_batch, n_in_height, n_in_width, n_in_channels)
+        # out_grad : (n_batch, n_out_height, n_out_width, n_out_channels)
+        #     arg0 : (n_in_channels, n_in_height, n_in_width, n_batch)
+        #     arg1 : (n_out_height, n_out_width, n_batch, n_out_channels)
+        #      ret : (n_in_channels, n_kernel, n_kernel, n_out_channels)
+        #         => (n_kernel, n_kernel, n_in_channels, n_out_channels)
+        #
+        #        n_out = (n_in + 2*self.padding - n_kernel + 1)
+        # n_out - n_in = (2*self.padding - n_kernel + 1)
+        #     n_kernel = (n_in + 2*padding - n_out + 1)
+        #      padding = (n_kernel + n_out - n_in - 1) / 2
+        #              = (n_kernel + 2*self.padding - n_kernel + 1 - 1) / 2
+        #              = self.padding
+        #
+        W_grad = conv(
+            Z.transpose((0,3)),
+            out_grad.transpose((0,2)).transpose((0,1)),
+            stride=1,
+            padding=self.padding
+        ).transpose((0,1)).transpose((1,2))
+        return Z_grad, W_grad
         ### END YOUR SOLUTION
 
 
