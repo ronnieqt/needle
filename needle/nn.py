@@ -290,12 +290,31 @@ class Conv(Module):
         self.stride = stride
 
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        factory_kwargs = {"device": device, "dtype": dtype}
+        receptive_field_size = self.kernel_size * self.kernel_size
+        self.weight = Parameter(init.kaiming_uniform(
+            fan_in=self.in_channels*receptive_field_size,
+            fan_out=self.out_channels*receptive_field_size,
+            shape=(self.kernel_size, self.kernel_size, self.in_channels, self.out_channels)
+        ), **factory_kwargs)
+        bound = 1.0 / (self.in_channels * receptive_field_size)**0.5
+        self.bias = Parameter(init.rand(
+            self.out_channels,
+            low=-bound, high=bound
+        ), **factory_kwargs) if bias else None
         ### END YOUR SOLUTION
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, X: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        X_NHWC = X.transpose((1,3)).transpose((1,2))  # X: NCHW
+        # calculate the appropriate padding to ensure input and output dimensions are the same
+        # (in the stride=1 case, anyways)
+        padding = self.kernel_size // 2
+        out = ops.conv(X_NHWC, self.weight, self.stride, padding)
+        if self.bias is not None:
+            out += self.bias.reshape((1,1,1,self.out_channels)).broadcast_to(out.shape)
+        # NHWC => NCHW
+        return out.transpose((1,2)).transpose((1,3))
         ### END YOUR SOLUTION
 
 # %%
