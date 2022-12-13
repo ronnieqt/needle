@@ -617,9 +617,22 @@ class Conv(TensorOp):
         self.stride = stride
         self.padding = padding
 
-    def compute(self, A, B):
+    def compute(self, Z: NDArray, weight: NDArray):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        # algorithm: im2col
+        if self.padding > 0:
+            Z = Z.pad(((0,0),(self.padding,self.padding),(self.padding,self.padding),(0,0)))
+        N, H, W, C_in = Z.shape        # [BATCHES][HEIGHT][WIDTH][CHANNELS]
+        K, _, _, C_out = weight.shape  # [KERNEL_SIZE][KERNEL_SIZE][IN_CHANNELS][OUT_CHANNELS]
+        N_stride, H_stride, W_stride, C_stride = Z.strides
+        H_out = (H-K+1) // self.stride
+        W_out = (W-K+1) // self.stride
+        A = Z.as_strided(
+            shape=(N, H_out, W_out, K, K, C_in),
+            strides=(N_stride, H_stride*self.stride, W_stride*self.stride, H_stride, W_stride, C_stride)
+        ).compact().reshape((-1, K*K*C_in))
+        out = A @ weight.compact().reshape((-1, C_out))
+        return out.compact().reshape((N, H_out, W_out, C_out))
         ### END YOUR SOLUTION
 
     def gradient(self, out_grad, node):
@@ -628,5 +641,5 @@ class Conv(TensorOp):
         ### END YOUR SOLUTION
 
 
-def conv(a, b, stride=1, padding=1):
-    return Conv(stride, padding)(a, b)
+def conv(Z, weight, stride=1, padding=1):
+    return Conv(stride, padding)(Z, weight)
