@@ -672,13 +672,13 @@ def matmul(lhs: NDArray, rhs: NDArray):
 
 def sum(array: NDArray, axes: Union[None, int, tuple] = None, keepdims=False):
     if axes is None:
-        res = array.sum()
+        res = array.sum(keepdims=True)
     elif isinstance(axes, int):
-        res = array.sum(axes)
+        res = array.sum(axes, keepdims=True)
     else:
         res = array
         for axis in axes:
-            res = res.sum(axis)
+            res = res.sum(axis, keepdims=True)
     return res if keepdims else res.squeeze()
 
 

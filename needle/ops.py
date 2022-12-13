@@ -637,43 +637,83 @@ class Conv(TensorOp):
 
     def gradient(self, out_grad: Tensor, node: Tensor):
         ### BEGIN YOUR SOLUTION
+        # ==================================================
         # Z, Z_grad : (n_batch, n_in_height, n_in_width, n_in_channels)
         # W, W_grad : (n_kernel, n_kernel, n_in_channels, n_out_channels)
         #  out_grad : (n_batch, n_out_height, n_out_width, n_out_channels)
+        # ==================================================
         Z, W = node.inputs
         kernel_size = W.shape[0]
+        _out_grad = out_grad if self.stride == 1 else \
+                    dilate(out_grad, axes=(1,2), dilation=self.stride-1)
+        # ==================================================
+        # simple case: stride == 1
+        # --------------------------------------------------
         # arg0 : (n_batch, n_out_height, n_out_width, n_out_channels)
         # arg1 : (n_kernel, n_kernel, n_out_channels, n_in_channels)
         #  ret : (n_batch, n_in_height, n_in_width, n_in_channels)
-        #
+        # --------------------------------------------------
         #    n_out = (n_in + 2*self.padding - n_kernel + 1)
         #     n_in = (n_out - 2*self.padding + n_kernel - 1)
         #          = (n_out + 2*padding - n_kernel + 1)
         # paddding = n_kernel - self.padding - 1
-        #
+        # ==================================================
+        # full case: any stride
+        # --------------------------------------------------
+        # arg0 : (n_batch, n_out_height*(1+dilation), n_out_width*(1+dilation), n_out_channels)
+        # arg1 : (n_kernel, n_kernel, n_out_channels, n_in_channels)
+        #  ret : (n_batch, n_in_height, n_in_width, n_in_channels)
+        # --------------------------------------------------
+        #    n_out = (n_in + 2*self.padding - n_kernel + 1) // self.stride
+        # paddding = n_kernel - self.padding - 1
+        #     n_in = n_out*(1+dilation) + 2*padding - n_kernel + 1
+        #          = n_out + n_out*dilation + 2*n_kernel - 2*self.padding - 2 - n_kernel + 1
+        #          = n_out - 2*self.padding + n_kernel - 1 + n_out*dilation
+        #        0 = n_out - (n_in + 2*self.padding - n_kernel + 1) + n_out*dilation
+        #          = n_out - self.stride * n_out + n_out * dilation
+        # dilation = self.stride - 1
+        # ==================================================
         Z_grad = conv(
-            out_grad,
+            _out_grad,
             flip(W, (0,1)).transpose((2,3)),
             stride=1,
             padding=kernel_size-self.padding-1
         )
+        # ==================================================
         #        Z : (n_batch, n_in_height, n_in_width, n_in_channels)
         # out_grad : (n_batch, n_out_height, n_out_width, n_out_channels)
         #     arg0 : (n_in_channels, n_in_height, n_in_width, n_batch)
         #     arg1 : (n_out_height, n_out_width, n_batch, n_out_channels)
         #      ret : (n_in_channels, n_kernel, n_kernel, n_out_channels)
         #         => (n_kernel, n_kernel, n_in_channels, n_out_channels)
-        #
+        # --------------------------------------------------
+        # simple case: stride == 1
+        # --------------------------------------------------
         #        n_out = (n_in + 2*self.padding - n_kernel + 1)
         # n_out - n_in = (2*self.padding - n_kernel + 1)
         #     n_kernel = (n_in + 2*padding - n_out + 1)
         #      padding = (n_kernel + n_out - n_in - 1) / 2
         #              = (n_kernel + 2*self.padding - n_kernel + 1 - 1) / 2
         #              = self.padding
-        #
+        # ==================================================
+        # full case: any stride
+        # --------------------------------------------------
+        #     arg0 : (n_in_channels, n_in_height, n_in_width, n_batch)
+        #     arg1 : (n_out_height*(1+dilation), n_out_width*(1+dilation), n_batch, n_out_channels)
+        #      ret : (n_in_channels, n_kernel, n_kernel, n_out_channels)
+        #         => (n_kernel, n_kernel, n_in_channels, n_out_channels)
+        # --------------------------------------------------
+        #              n_out = (n_in + 2*self.padding - n_kernel + 1) // self.stride
+        #           n_kernel = (n_in + 2*self.padding - n_out*(1+dilation) + 1)
+        #  self.stride*n_out = n_in + 2*self.padding - n_kernel + 1
+        #                    =  n_in + 2*self.padding + 1
+        #                    - (n_in + 2*self.padding - n_out*(1+dilation) + 1)
+        #                    = n_out*(1+dilation)
+        #           dilation = self.stride - 1
+        # ==================================================
         W_grad = conv(
             Z.transpose((0,3)),
-            out_grad.transpose((0,2)).transpose((0,1)),
+            _out_grad.transpose((0,2)).transpose((0,1)),
             stride=1,
             padding=self.padding
         ).transpose((0,1)).transpose((1,2))
