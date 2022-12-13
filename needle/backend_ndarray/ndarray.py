@@ -265,6 +265,12 @@ class NDArray:
         """
 
         ### BEGIN YOUR SOLUTION
+        ndim_to_infer = new_shape.count(-1)
+        if ndim_to_infer > 1:
+            raise ValueError(f"can only infer 1 dimension, {ndim_to_infer} -1s provided")
+        if ndim_to_infer == 1:
+            s_infer = prod(self.shape) // -prod(new_shape)
+            new_shape = tuple(s_infer if (s == -1) else s for s in new_shape)
         if prod(self.shape) != prod(new_shape):
             raise ValueError(f"cannot reshape from {self.shape} to {new_shape}")
         if not self.is_compact():
