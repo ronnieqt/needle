@@ -209,9 +209,9 @@ class ReLU(Module):
 # %% Tanh
 
 class Tanh(Module):
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, X: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        return ops.tanh(X)
         ### END YOUR SOLUTION
 
 # %% Sigmoid
