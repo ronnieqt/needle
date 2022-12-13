@@ -84,7 +84,8 @@ def kaiming_uniform(fan_in: int, fan_out: int, shape=None, nonlinearity="relu", 
     ### BEGIN YOUR SOLUTION
     gain = math.sqrt(2.0)  # gain value for ReLU
     bound = gain * math.sqrt(3.0 / fan_in)
-    return rand(fan_in, fan_out, low=-bound, high=bound, **kwargs)
+    out_shape = shape if (shape is not None) else (fan_in, fan_out)
+    return rand(*out_shape, low=-bound, high=bound, **kwargs)
     ### END YOUR SOLUTION
 
 
