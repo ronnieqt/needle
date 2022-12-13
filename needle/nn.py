@@ -82,49 +82,6 @@ class Identity(Module):
     def forward(self, X: Tensor):
         return X
 
-# %% Linear Module
-
-class Linear(Module):
-
-    def __init__(self, in_features: int, out_features: int, bias=True, device=None, dtype="float32"):
-        super().__init__()
-        self.in_features = in_features
-        self.out_features = out_features
-        factory_kwargs = {"device": device, "dtype": dtype}
-        ### BEGIN YOUR SOLUTION
-        # initialize module parameters
-        self.weight = Parameter(
-            init.kaiming_uniform(in_features, out_features), **factory_kwargs
-        )
-        self.bias = Parameter(
-            init.kaiming_uniform(out_features, 1).reshape((1, out_features)), **factory_kwargs
-        ) if bias else None
-        ### END YOUR SOLUTION
-
-    def forward(self, X: Tensor) -> Tensor:
-        ### BEGIN YOUR SOLUTION
-        N, out_features = X.shape[0], self.weight.shape[1]
-        out = X @ self.weight
-        if self.bias is not None:
-            out += self.bias.broadcast_to((N, out_features))
-        return out
-        ### END YOUR SOLUTION
-
-# %% Sequence Module
-
-class Sequential(Module):
-    def __init__(self, *modules: Module):
-        super().__init__()
-        self.modules = modules
-
-    def forward(self, X: Tensor) -> Tensor:
-        ### BEGIN YOUR SOLUTION
-        H = X
-        for m in self.modules:
-            H = m(H)
-        return H
-        ### END YOUR SOLUTION
-
 # %% Softmax Loss
 
 class SoftmaxLoss(Module):
@@ -268,7 +225,50 @@ class Sigmoid(Module):
         raise NotImplementedError()
         ### END YOUR SOLUTION
 
-# %%
+# %% Linear Module
+
+class Linear(Module):
+
+    def __init__(self, in_features: int, out_features: int, bias=True, device=None, dtype="float32"):
+        super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        factory_kwargs = {"device": device, "dtype": dtype}
+        ### BEGIN YOUR SOLUTION
+        # initialize module parameters
+        self.weight = Parameter(
+            init.kaiming_uniform(in_features, out_features), **factory_kwargs
+        )
+        self.bias = Parameter(
+            init.kaiming_uniform(out_features, 1).reshape((1, out_features)), **factory_kwargs
+        ) if bias else None
+        ### END YOUR SOLUTION
+
+    def forward(self, X: Tensor) -> Tensor:
+        ### BEGIN YOUR SOLUTION
+        N, out_features = X.shape[0], self.weight.shape[1]
+        out = X @ self.weight
+        if self.bias is not None:
+            out += self.bias.broadcast_to((N, out_features))
+        return out
+        ### END YOUR SOLUTION
+
+# %% Sequence Module
+
+class Sequential(Module):
+    def __init__(self, *modules: Module):
+        super().__init__()
+        self.modules = modules
+
+    def forward(self, X: Tensor) -> Tensor:
+        ### BEGIN YOUR SOLUTION
+        H = X
+        for m in self.modules:
+            H = m(H)
+        return H
+        ### END YOUR SOLUTION
+
+# %% Convolution(2D)
 
 class Conv(Module):
     """
@@ -298,6 +298,7 @@ class Conv(Module):
         raise NotImplementedError()
         ### END YOUR SOLUTION
 
+# %%
 
 class RNNCell(Module):
     def __init__(self, input_size, hidden_size, bias=True, nonlinearity='tanh', device=None, dtype="float32"):
