@@ -407,10 +407,19 @@ class RNN(Module):
         """
         super().__init__()
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        self.num_layers = num_layers
+        self.rnn_cells = [
+            RNNCell(
+                input_size if (i == 0) else hidden_size,
+                hidden_size,
+                bias, nonlinearity,
+                device, dtype
+            )
+            for i in range(num_layers)
+        ]
         ### END YOUR SOLUTION
 
-    def forward(self, X, h0=None):
+    def forward(self, X: Tensor, h0: Optional[Tensor] = None):
         """
         Inputs:
         X of shape (seq_len, bs, input_size) containing the features of the input sequence.
@@ -423,7 +432,16 @@ class RNN(Module):
         h_n of shape (num_layers, bs, hidden_size) containing the final hidden state for each element in the batch.
         """
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        Xs = ops.split(X, axis=0)                                                      # len = seq_len
+        hs = [*ops.split(h0, axis=0)] if (h0 is not None) else [None]*self.num_layers  # len = num_layers
+        outs = []
+        for X in Xs:
+            h = X
+            for k, rnn_cell in enumerate(self.rnn_cells):
+                h = rnn_cell(h, hs[k])
+                hs[k] = h
+            outs.append(hs[-1])  # h from the last layer of the RNN
+        return ops.stack(outs, axis=0), ops.stack(hs, axis=0)
         ### END YOUR SOLUTION
 
 # %% LSTM
@@ -558,6 +576,7 @@ class Embedding(Module):
 # %% main
 
 if __name__ == "__main__":
+    # === RNN Cell
     batch_size = 128
     input_size = 10
     hidden_size = 20
@@ -565,3 +584,11 @@ if __name__ == "__main__":
     h = Tensor(np.random.randn(batch_size, hidden_size))
     model = RNNCell(input_size, hidden_size)
     print(model(X, h).shape)
+    # RNN
+    seq_len = 50
+    num_layers = 2
+    X = Tensor(np.random.randn(seq_len, batch_size, input_size))
+    h0 = Tensor(np.random.randn(num_layers, batch_size, hidden_size))
+    model = RNN(input_size, hidden_size, num_layers)
+    res = model(X, h0)
+    print(res[0].shape, res[1].shape)
