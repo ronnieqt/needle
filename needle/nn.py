@@ -503,6 +503,8 @@ class LSTMCell(Module):
             element in the batch.
         """
         ### BEGIN YOUR SOLUTION
+        if isinstance(h, tuple) and (h[0] is None or h[1] is None):
+            h = None
         A = X @ self.W_ih + (h[0] @ self.W_hh if (h is not None) else 0)
         if self.bias:
             A += self.bias_ih.reshape((1,-1)).broadcast_to(A.shape) \
@@ -543,7 +545,15 @@ class LSTM(Module):
             of shape (4*hidden_size,).
         """
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        self.num_layers = num_layers
+        self.lstm_cells = [
+            LSTMCell(
+                input_size if (i == 0) else hidden_size,
+                hidden_size,
+                bias, device, dtype
+            )
+            for i in range(num_layers)
+        ]
         ### END YOUR SOLUTION
 
     def forward(self, X, h=None):
@@ -553,7 +563,7 @@ class LSTM(Module):
         h, tuple of (h0, c0) with
             h_0 of shape (num_layers, bs, hidden_size) containing the initial
                 hidden state for each element in the batch. Defaults to zeros if not provided.
-            c0 of shape (num_layers, bs, hidden_size) containing the initial
+            c0  of shape (num_layers, bs, hidden_size) containing the initial
                 hidden cell state for each element in the batch. Defaults to zeros if not provided.
 
         Outputs: (output, (h_n, c_n))
@@ -561,10 +571,24 @@ class LSTM(Module):
             (h_t) from the last layer of the LSTM, for each t.
         tuple of (h_n, c_n) with
             h_n of shape (num_layers, bs, hidden_size) containing the final hidden state for each element in the batch.
-            h_n of shape (num_layers, bs, hidden_size) containing the final hidden cell state for each element in the batch.
+            c_n of shape (num_layers, bs, hidden_size) containing the final hidden cell state for each element in the batch.
         """
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        Xs = ops.split(X, axis=0)  # len = seq_len
+        hcs = [[*ops.split(h[0], axis=0)], [*ops.split(h[1], axis=0)]] \
+              if (h is not None) else \
+              [[None]*self.num_layers, [None]*self.num_layers]
+        outs = []
+        for X in Xs:
+            h = X
+            for k, lstm_cell in enumerate(self.lstm_cells):
+                h, c = lstm_cell(h, (hcs[0][k], hcs[1][k]))
+                hcs[0][k], hcs[1][k] = h, c
+            outs.append(hcs[0][-1])
+        return (
+            ops.stack(outs, axis=0),                                # (seq_len, batch_size, hidden_size)
+            (ops.stack(hcs[0], axis=0), ops.stack(hcs[1], axis=0))  # (num_layers, batch_size, hidden_size)
+        )
         ### END YOUR SOLUTION
 
 # %% Embedding
@@ -613,7 +637,10 @@ if __name__ == "__main__":
     model = RNNCell(input_size, hidden_size)
     print(model(X, h).shape)
     # === LSTM Cell
-    h = (Tensor(np.random.randn(batch_size, hidden_size)), Tensor(np.random.randn(batch_size, hidden_size)))
+    h = (
+        Tensor(np.random.randn(batch_size, hidden_size)),
+        Tensor(np.random.randn(batch_size, hidden_size))
+    )
     model = LSTMCell(input_size, hidden_size)
     res = model(X, h)
     print(res[0].shape, res[1].shape)
@@ -625,3 +652,12 @@ if __name__ == "__main__":
     model = RNN(input_size, hidden_size, num_layers)
     res = model(X, h0)
     print(res[0].shape, res[1].shape)
+    # === LSTM
+    X = Tensor(np.random.randn(seq_len, batch_size, input_size))
+    h = (
+        Tensor(np.random.randn(num_layers, batch_size, hidden_size)),
+        Tensor(np.random.randn(num_layers, batch_size, hidden_size))
+    )
+    model = LSTM(input_size, hidden_size, num_layers)
+    res = model(X)
+
