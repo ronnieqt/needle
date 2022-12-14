@@ -2,7 +2,7 @@
 
 # %% Import Libs
 
-from typing import List, Callable, Any
+from typing import List, Callable, Any, Optional
 from needle.autograd import Tensor
 from needle import ops
 import needle.init as init
@@ -319,7 +319,7 @@ class Conv(Module):
         return out.transpose((1,2)).transpose((1,3))
         ### END YOUR SOLUTION
 
-# %%
+# %% RNN
 
 class RNNCell(Module):
     def __init__(self, input_size, hidden_size, bias=True, nonlinearity='tanh', device=None, dtype="float32"):
@@ -342,10 +342,27 @@ class RNNCell(Module):
         """
         super().__init__()
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        assert nonlinearity in ("tanh", "relu")
+        self.f_nonlinear = ops.tanh if nonlinearity == "tanh" else ops.relu
+
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+
+        self.factory_kwargs = {"device": device, "dtype": dtype}
+        bound = (1 / hidden_size)**0.5
+        self.W_ih = Parameter(init.rand(input_size,  hidden_size, low=-bound, high=bound), **self.factory_kwargs)
+        self.W_hh = Parameter(init.rand(hidden_size, hidden_size, low=-bound, high=bound), **self.factory_kwargs)
+
+        self.bias = bias
+        if bias:
+            self.bias_ih = Parameter(init.rand(hidden_size, low=-bound, high=bound), **self.factory_kwargs)
+            self.bias_hh = Parameter(init.rand(hidden_size, low=-bound, high=bound), **self.factory_kwargs)
+        else:
+            self.bias_ih = None
+            self.bias_hh = None
         ### END YOUR SOLUTION
 
-    def forward(self, X, h=None):
+    def forward(self, X: Tensor, h: Optional[Tensor] = None):
         """
         Inputs:
         X of shape (bs, input_size): Tensor containing input features
@@ -357,7 +374,11 @@ class RNNCell(Module):
             for each element in the batch.
         """
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        A = X @ self.W_ih + (h @ self.W_hh if (h is not None) else 0)
+        if self.bias:
+            A += self.bias_ih.reshape((1,self.hidden_size)).broadcast_to(A.shape) \
+               + self.bias_hh.reshape((1,self.hidden_size)).broadcast_to(A.shape)
+        return self.f_nonlinear(A)
         ### END YOUR SOLUTION
 
 
@@ -405,6 +426,7 @@ class RNN(Module):
         raise NotImplementedError()
         ### END YOUR SOLUTION
 
+# %% LSTM
 
 class LSTMCell(Module):
     def __init__(self, input_size, hidden_size, bias=True, device=None, dtype="float32"):
@@ -499,6 +521,7 @@ class LSTM(Module):
         raise NotImplementedError()
         ### END YOUR SOLUTION
 
+# %% Embedding
 
 class Embedding(Module):
     def __init__(self, num_embeddings, embedding_dim, device=None, dtype="float32"):
@@ -531,3 +554,14 @@ class Embedding(Module):
         ### BEGIN YOUR SOLUTION
         raise NotImplementedError()
         ### END YOUR SOLUTION
+
+# %% main
+
+if __name__ == "__main__":
+    batch_size = 128
+    input_size = 10
+    hidden_size = 20
+    X = Tensor(np.random.randn(batch_size, input_size))
+    h = Tensor(np.random.randn(batch_size, hidden_size))
+    model = RNNCell(input_size, hidden_size)
+    print(model(X, h).shape)
