@@ -390,7 +390,7 @@ class ReLU(TensorOp):
     def gradient(self, out_grad: Tensor, node: Tensor):
         ### BEGIN YOUR SOLUTION
         a = node.inputs[0].realize_cached_data()
-        return out_grad * Tensor(a > 0.0, dtype=a.dtype)
+        return out_grad * Tensor.make_const(a > 0.0)
         ### END YOUR SOLUTION
 
 
@@ -419,7 +419,6 @@ class LogSumExp(TensorOp):
     def gradient(self, out_grad: Tensor, node: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
         X = node.inputs[0]
-        # TODO: whether there are better solutions?
         c = Tensor.make_const(array_api.max(X.realize_cached_data(), self.axes, keepdims=True))
         if BACKEND == "nd":
             exp_X_stable = exp(X - c.broadcast_to(X.shape))

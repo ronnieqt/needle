@@ -88,7 +88,7 @@ class SoftmaxLoss(Module):
     def forward(self, logits: Tensor, y: Tensor):
         ### BEGIN YOUR SOLUTION
         # y is a list of true labels (numbers), not one-hot encoded
-        y_one_hot = init.one_hot(logits.shape[1], y)
+        y_one_hot = init.one_hot(logits.shape[1], y, device=logits.device, dtype=logits.dtype)
         losses = ops.logsumexp(logits, axes=(1,)) - ops.summation(logits * y_one_hot, axes=(1,))
         return ops.summation(losses) / losses.shape[0]
         ### END YOUR SOLUTION
@@ -148,16 +148,18 @@ class BatchNorm1d(Module):
         n, p = X.shape
         if self.training:
             X_mean = X.sum(axes=(0,)) / n
-            X_var = ((X - X_mean.broadcast_to((n,p)))**2).sum(axes=(0,)) / n
+            X_var = ((X - X_mean.reshape((1,p)).broadcast_to((n,p)))**2).sum(axes=(0,)) / n
+            # shape of X_mean and X_var: (p,)
             self.running_mean = (1-self.momentum) * self.running_mean + self.momentum * X_mean.data
             self.running_var = (1-self.momentum) * self.running_var + self.momentum * X_var.data
-            X_normalized = (X - X_mean.broadcast_to((n,p))) \
-                           / (X_var.broadcast_to((n,p)) + self.eps)**0.5
+            X_normalized = (X - X_mean.reshape((1,p)).broadcast_to((n,p))) \
+                           / (X_var.reshape((1,p)).broadcast_to((n,p)) + self.eps)**0.5
         else:  # model.eval()
-            X_normalized = (X - self.running_mean.broadcast_to((n,p))) \
-                           / (self.running_var.broadcast_to((n,p)) + self.eps)**0.5
-        return X_normalized * self.weight.broadcast_to((n,p)) \
-               + self.bias.broadcast_to((n,p))
+            X_normalized = (X - self.running_mean.reshape((1,p)).broadcast_to((n,p))) \
+                           / (self.running_var.reshape((1,p)).broadcast_to((n,p)) + self.eps)**0.5
+        # shape of X_normalized: (n, p)
+        return X_normalized * self.weight.reshape((1,p)).broadcast_to((n,p)) \
+               + self.bias.reshape((1,p)).broadcast_to((n,p))
         ### END YOUR SOLUTION
 
 
@@ -165,10 +167,10 @@ class BatchNorm2d(BatchNorm1d):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def forward(self, x: Tensor):
+    def forward(self, X: Tensor):
         # nchw -> nhcw -> nhwc
-        s = x.shape
-        _x = x.transpose((1, 2)).transpose((2, 3)).reshape((s[0] * s[2] * s[3], s[1]))
+        s = X.shape
+        _x = X.transpose((1, 2)).transpose((2, 3)).reshape((s[0] * s[2] * s[3], s[1]))
         y = super().forward(_x).reshape((s[0], s[2], s[3], s[1]))
         return y.transpose((2,3)).transpose((1,2))
 

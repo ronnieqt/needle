@@ -118,7 +118,7 @@ class NDArray:
             self._init(array)
         else:
             # see if we can create a numpy array from input
-            array = NDArray(np.array(other), device=device)
+            array = NDArray(np.array(other, dtype="object"), device=device)
             self._init(array)
 
     def _init(self, other):
@@ -657,7 +657,7 @@ def broadcast_to(array, new_shape):
 
 
 def reshape(array: NDArray, new_shape: tuple):
-    return array.reshape(new_shape)
+    return array.compact().reshape(new_shape)
 
 
 def swapaxes(array: NDArray, axis1: int, axis2: int):
