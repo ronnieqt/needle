@@ -374,7 +374,10 @@ class RNNCell(Module):
             for each element in the batch.
         """
         ### BEGIN YOUR SOLUTION
-        A = X @ self.W_ih + (h @ self.W_hh if (h is not None) else 0)
+        if h is None:
+            batch_size = X.shape[0]
+            h = Tensor.make_const(init.zeros(batch_size, self.hidden_size, **self.factory_kwargs))
+        A = X @ self.W_ih + h @ self.W_hh
         if self.bias:
             A += self.bias_ih.reshape((1,self.hidden_size)).broadcast_to(A.shape) \
                + self.bias_hh.reshape((1,self.hidden_size)).broadcast_to(A.shape)
@@ -503,7 +506,13 @@ class LSTMCell(Module):
         ### BEGIN YOUR SOLUTION
         if isinstance(h, tuple) and (h[0] is None or h[1] is None):
             h = None
-        A = X @ self.W_ih + (h[0] @ self.W_hh if (h is not None) else 0)
+        if h is None:
+            batch_size = X.shape[0]
+            h = (
+                Tensor.make_const(init.zeros(batch_size, self.hidden_size, **self.factory_kwargs)),
+                Tensor.make_const(init.zeros(batch_size, self.hidden_size, **self.factory_kwargs))
+            )
+        A = X @ self.W_ih + h[0] @ self.W_hh
         if self.bias:
             A += self.bias_ih.reshape((1,-1)).broadcast_to(A.shape) \
                + self.bias_hh.reshape((1,-1)).broadcast_to(A.shape)
@@ -513,7 +522,7 @@ class LSTMCell(Module):
         f = ops.sigmoid(As[1])
         g = ops.tanh(As[2])
         o = ops.sigmoid(As[3])
-        c_ = (f * h[1] if h is not None else 0) + i * g
+        c_ = f * h[1] + i * g
         h_ = o * ops.tanh(c_)
         return h_, c_
         ### END YOUR SOLUTION
