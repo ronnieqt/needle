@@ -534,7 +534,8 @@ class NDArray:
         """
 
         assert self.ndim == 2 and other.ndim == 2
-        assert self.shape[1] == other.shape[0], f"{self.shape[1]} != {other.shape[0]}"
+        assert self.shape[1] == other.shape[0], \
+            f"self.shape: {self.shape}, other.shape: {other.shape}"
 
         m, n, p = self.shape[0], self.shape[1], other.shape[1]
 
