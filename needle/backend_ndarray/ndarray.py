@@ -332,7 +332,7 @@ class NDArray:
         """
 
         ### BEGIN YOUR SOLUTION
-        assert len(new_shape) == len(self.shape)
+        assert len(new_shape) == len(self.shape), f"shape: {self.shape}, new_shape: {new_shape}"
         for new_s, s in zip(new_shape, self.shape):
             assert new_s == s or s == 1, f"cannot broadcast from {self.shape} to {new_shape}"
         new_strides = tuple(stride if s != 1 else 0 for s, stride in zip(self.shape, self.strides))
@@ -534,7 +534,7 @@ class NDArray:
         """
 
         assert self.ndim == 2 and other.ndim == 2
-        assert self.shape[1] == other.shape[0]
+        assert self.shape[1] == other.shape[0], f"{self.shape[1]} != {other.shape[0]}"
 
         m, n, p = self.shape[0], self.shape[1], other.shape[1]
 
@@ -594,7 +594,7 @@ class NDArray:
             )
         return view, out
 
-    def sum(self, axis=None, keepdims=False):
+    def sum(self, axis=None, keepdims=True):
         view, out = self.reduce_view_out(axis, keepdims=keepdims)
         self.device.reduce_sum(view.compact()._handle, out._handle, view.shape[-1])
         return out
@@ -672,13 +672,13 @@ def matmul(lhs: NDArray, rhs: NDArray):
 
 def sum(array: NDArray, axes: Union[None, int, tuple] = None, keepdims=False):
     if axes is None:
-        res = array.sum(keepdims=True)
+        res = array.sum()
     elif isinstance(axes, int):
-        res = array.sum(axes, keepdims=True)
+        res = array.sum(axes)
     else:
         res = array
         for axis in axes:
-            res = res.sum(axis, keepdims=True)
+            res = res.sum(axis)
     return res if keepdims else res.squeeze()
 
 
