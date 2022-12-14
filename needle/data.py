@@ -136,7 +136,7 @@ class DataLoader:
             idx = self.ordering[self.batch_idx]
             batch = map(list, zip(*[self.dataset[i] for i in idx]))
             self.batch_idx += 1
-            return tuple(Tensor(data) for data in batch)
+            return tuple(Tensor(data, requires_grad=False) for data in batch)
         else:
             raise StopIteration
         ### END YOUR SOLUTION
@@ -312,7 +312,7 @@ class CIFAR10Dataset(Dataset):
         return self.X.shape[0]
         ### END YOUR SOLUTION
 
-# %%
+# %% Dictionary: word -> int
 
 class Dictionary(object):
     """
@@ -327,7 +327,7 @@ class Dictionary(object):
         self.word2idx = {}
         self.idx2word = []
 
-    def add_word(self, word):
+    def add_word(self, word: str) -> int:
         """
         Input: word of type str
         If the word is not in the dictionary, adds the word to the dictionary
@@ -335,7 +335,10 @@ class Dictionary(object):
         Returns the word's unique ID.
         """
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        if word not in self.word2idx:
+            self.word2idx[word] = len(self.idx2word)
+            self.idx2word.append(word)
+        return self.word2idx[word]
         ### END YOUR SOLUTION
 
     def __len__(self):
@@ -343,10 +346,10 @@ class Dictionary(object):
         Returns the number of unique words in the dictionary.
         """
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        return len(self.idx2word)
         ### END YOUR SOLUTION
 
-
+# %% Corpus
 
 class Corpus(object):
     """
@@ -370,9 +373,27 @@ class Corpus(object):
         ids: List of ids
         """
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        ids = []
+        with open(path, 'r') as f:
+            n_lines = 0
+            while True:
+                # read a line
+                line = f.readline()
+                if line == "":
+                    break
+                # process the line
+                words = line.strip().split()
+                for word in words:
+                    ids.append(self.dictionary.add_word(word))
+                ids.append(self.dictionary.add_word("<eos>"))
+                n_lines += 1
+                # break if max_lines reached
+                if max_lines is not None and n_lines >= max_lines:
+                    break
+        return ids
         ### END YOUR SOLUTION
 
+# %% sequence to batch
 
 def batchify(data, batch_size, device, dtype):
     """
@@ -391,7 +412,11 @@ def batchify(data, batch_size, device, dtype):
     Returns the data as a numpy array of shape (nbatch, batch_size).
     """
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    n_batch = len(data) // batch_size
+    return (
+        np.array(data[:n_batch*batch_size], dtype)
+        .reshape((n_batch, batch_size), order='F')
+    )
     ### END YOUR SOLUTION
 
 
@@ -415,5 +440,8 @@ def get_batch(batches, i, bptt, device=None, dtype=None):
     target - Tensor of shape (bptt*bs,) with cached data as NDArray
     """
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    X = batches[i:i+bptt, :]
+    y = batches[i+1:i+1+bptt,:]
+    return Tensor(X, device=device, dtype=dtype, requires_grad=False), \
+           Tensor(y.flatten(order='F'), device=device, dtype=dtype, requires_grad=False)
     ### END YOUR SOLUTION
