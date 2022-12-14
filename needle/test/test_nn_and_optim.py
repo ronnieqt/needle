@@ -645,13 +645,13 @@ def test_nn_batchnorm_backward_affine_1():
 
 def test_nn_batchnorm_running_mean_1():
     np.testing.assert_allclose(batchnorm_running_mean(4, 3),
-        np.array([2.020656, 1.69489 , 1.498846], dtype=np.float32), rtol=1e-5, atol=1e-5)
+        np.array([[2.020656, 1.69489 , 1.498846]], dtype=np.float32), rtol=1e-5, atol=1e-5)
 
 
 
 def test_nn_batchnorm_running_var_1():
     np.testing.assert_allclose(batchnorm_running_var(4, 3),
-        np.array([1.412775, 1.386191, 1.096604], dtype=np.float32), rtol=1e-5, atol=1e-5)
+        np.array([[1.412775, 1.386191, 1.096604]], dtype=np.float32), rtol=1e-5, atol=1e-5)
 
 
 
