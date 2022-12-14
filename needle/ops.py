@@ -438,6 +438,24 @@ class LogSumExp(TensorOp):
 def logsumexp(a, axes=None):
     return LogSumExp(axes=axes)(a)
 
+# %% Sigmoid
+
+class Sigmoid(TensorOp):
+    def compute(self, a: NDArray):
+        ### BEGIN YOUR SOLUTION
+        return (1 + array_api.exp(-a))**(-1)
+        ### END YOUR SOLUTION
+
+    def gradient(self, out_grad: Tensor, node: Tensor):
+        ### BEGIN YOUR SOLUTION
+        s = sigmoid(node.inputs[0])
+        return out_grad * s * (1 - s)
+        ### END YOUR SOLUTION
+
+
+def sigmoid(a):
+    return Sigmoid()(a)
+
 # %% Tanh
 
 class Tanh(TensorOp):

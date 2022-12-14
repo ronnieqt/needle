@@ -222,9 +222,9 @@ class Sigmoid(Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, X: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
-        return (1 + ops.exp(-x))**(-1)
+        return ops.sigmoid(X)
         ### END YOUR SOLUTION
 
 # %% Linear Module
@@ -481,8 +481,6 @@ class LSTMCell(Module):
         else:
             self.bias_ih = None
             self.bias_hh = None
-
-        self.sigmoid = Sigmoid()
         ### END YOUR SOLUTION
 
 
@@ -511,10 +509,10 @@ class LSTMCell(Module):
                + self.bias_hh.reshape((1,-1)).broadcast_to(A.shape)
         batch_size = X.shape[0]
         As = ops.split(A.reshape((batch_size, 4, self.hidden_size)), axis=1)
-        i = self.sigmoid(As[0])
-        f = self.sigmoid(As[1])
+        i = ops.sigmoid(As[0])
+        f = ops.sigmoid(As[1])
         g = ops.tanh(As[2])
-        o = self.sigmoid(As[3])
+        o = ops.sigmoid(As[3])
         c_ = (f * h[1] if h is not None else 0) + i * g
         h_ = o * ops.tanh(c_)
         return h_, c_
