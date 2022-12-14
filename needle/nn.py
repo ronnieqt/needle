@@ -224,7 +224,7 @@ class Sigmoid(Module):
 
     def forward(self, x: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        return (1 + ops.exp(-x))**(-1)
         ### END YOUR SOLUTION
 
 # %% Linear Module
@@ -466,7 +466,23 @@ class LSTMCell(Module):
         """
         super().__init__()
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+
+        self.factory_kwargs = {"device": device, "dtype": dtype}
+        bound = (1 / hidden_size)**0.5
+        self.W_ih = Parameter(init.rand(input_size,  4*hidden_size, low=-bound, high=bound), **self.factory_kwargs)
+        self.W_hh = Parameter(init.rand(hidden_size, 4*hidden_size, low=-bound, high=bound), **self.factory_kwargs)
+
+        self.bias = bias
+        if bias:
+            self.bias_ih = Parameter(init.rand(4*hidden_size, low=-bound, high=bound), **self.factory_kwargs)
+            self.bias_hh = Parameter(init.rand(4*hidden_size, low=-bound, high=bound), **self.factory_kwargs)
+        else:
+            self.bias_ih = None
+            self.bias_hh = None
+
+        self.sigmoid = Sigmoid()
         ### END YOUR SOLUTION
 
 
@@ -487,7 +503,19 @@ class LSTMCell(Module):
             element in the batch.
         """
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        A = X @ self.W_ih + (h[0] @ self.W_hh if (h is not None) else 0)
+        if self.bias:
+            A += self.bias_ih.reshape((1,-1)).broadcast_to(A.shape) \
+               + self.bias_hh.reshape((1,-1)).broadcast_to(A.shape)
+        batch_size = X.shape[0]
+        As = ops.split(A.reshape((batch_size, 4, self.hidden_size)), axis=1)
+        i = self.sigmoid(As[0])
+        f = self.sigmoid(As[1])
+        g = ops.tanh(As[2])
+        o = self.sigmoid(As[3])
+        c_ = (f * h[1] if h is not None else 0) + i * g
+        h_ = o * ops.tanh(c_)
+        return h_, c_
         ### END YOUR SOLUTION
 
 
@@ -584,7 +612,12 @@ if __name__ == "__main__":
     h = Tensor(np.random.randn(batch_size, hidden_size))
     model = RNNCell(input_size, hidden_size)
     print(model(X, h).shape)
-    # RNN
+    # === LSTM Cell
+    h = (Tensor(np.random.randn(batch_size, hidden_size)), Tensor(np.random.randn(batch_size, hidden_size)))
+    model = LSTMCell(input_size, hidden_size)
+    res = model(X, h)
+    print(res[0].shape, res[1].shape)
+    # === RNN
     seq_len = 50
     num_layers = 2
     X = Tensor(np.random.randn(seq_len, batch_size, input_size))
