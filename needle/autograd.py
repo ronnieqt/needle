@@ -171,39 +171,6 @@ class Value:
         return data.numpy() if not isinstance(data, tuple) else [x.numpy() for x in data]
 
 
-### Not needed in HW1
-class TensorTuple(Value):
-    """Represent a tuple of tensors.
-
-    To keep things simple, we do not support nested tuples.
-    """
-
-    def __len__(self):
-        cdata = self.realize_cached_data()
-        return len(cdata)
-
-    def __getitem__(self, index: int):
-        return needle.ops.tuple_get_item(self, index)
-
-    def tuple(self):
-        return tuple([x for x in self])
-
-    def __repr__(self):
-        return "needle.TensorTuple" + str(self.tuple())
-
-    def __str__(self):
-        return self.__repr__()
-
-    def __add__(self, other):
-        assert isinstance(other, TensorTuple)
-        assert len(self) == len(other)
-        return needle.ops.make_tuple(*[self[i] + other[i] for i in range(len(self))])
-
-    def detach(self):
-        """Create a new tensor that shares the data but detaches from the graph."""
-        return TensorTuple.make_const(self.realize_cached_data())
-
-
 class Tensor(Value):
     grad: "Tensor"
 
@@ -375,6 +342,38 @@ class Tensor(Value):
     __radd__ = __add__
     __rmul__ = __mul__
     __rmatmul__ = __matmul__
+
+
+class TensorTuple(Value):
+    """Represent a tuple of tensors.
+
+    To keep things simple, we do not support nested tuples.
+    """
+
+    def __len__(self):
+        cdata = self.realize_cached_data()
+        return len(cdata)
+
+    def __getitem__(self, index: int):
+        return needle.ops.tuple_get_item(self, index)
+
+    def tuple(self):
+        return tuple([x for x in self])
+
+    def __repr__(self):
+        return "needle.TensorTuple" + str(self.tuple())
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __add__(self, other):
+        assert isinstance(other, TensorTuple)
+        assert len(self) == len(other)
+        return needle.ops.make_tuple(*[self[i] + other[i] for i in range(len(self))])
+
+    def detach(self):
+        """Create a new tensor that shares the data but detaches from the graph."""
+        return TensorTuple.make_const(self.realize_cached_data())
 
 # %% Helpers
 
