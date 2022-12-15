@@ -15,6 +15,9 @@ class Optimizer:
         raise NotImplementedError()
 
     def reset_grad(self):
+        # Q: before or after the forward pass?
+        # A: The forward pass doesn’t care about the grads, nor does it modify them.
+        #    You only need to zero the grads before calling .backward().
         for p in self.params:
             p.grad = None
 

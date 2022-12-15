@@ -54,6 +54,8 @@ def _child_modules(value: object) -> List["Module"]:
 
 class Module:
     def __init__(self):
+        # NOTE: some modules will branch on this variable
+        # in their forward method (such as: Dropout and BatchNorm)
         self.training = True
 
     def parameters(self) -> List[Tensor]:

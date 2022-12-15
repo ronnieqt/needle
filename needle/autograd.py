@@ -98,13 +98,16 @@ class Value:
     # trace of computational graph
     # the following two fields capture how does the Value get computed
     op: Optional[Op]       # operation: how this Value is computed
-    inputs: List["Value"]  # inputs: a list of Values that are fed into the above op
+    inputs: List["Value"]  # inputs: a list of Values that are fed into the above op,
+                           #         this field represents connections in the computation graph
     # The following fields are cached fields for dynamic computation
     cached_data: NDArray   # used to hold the data
     requires_grad: bool    # indicates whether we want to compute gradient w.r.t. this Value or not
 
     def realize_cached_data(self) -> NDArray:                                   # IMPORTANT
-        """Run compute to realize the cached data"""
+        """Run compute to realize the cached data.
+        This method populates the cached_data field of all Tensors in the computation graph"""
+        # print(f"realize cached data: {str(id(self))[-6:]}")
         # avoid recomputation
         if self.cached_data is not None:
             return self.cached_data
@@ -172,7 +175,7 @@ class Value:
 
 
 class Tensor(Value):
-    grad: "Tensor"
+    grad: Optional["Tensor"]
 
     def __init__(
         self,
@@ -205,6 +208,21 @@ class Tensor(Value):
             cached_data=cached_data,
             requires_grad=requires_grad,
         )
+
+    def _init(
+        self,
+        op: Optional[Op],
+        inputs: List["Tensor"],
+        *,
+        num_outputs: int = 1,
+        cached_data: List[object] = None,
+        requires_grad: Optional[bool] = None
+    ) -> None:
+        super()._init(
+            op, inputs, num_outputs=num_outputs,
+            cached_data=cached_data, requires_grad=requires_grad
+        )
+        self.grad = None
 
     @staticmethod
     def _array_from_numpy(numpy_array, device, dtype):
@@ -274,6 +292,7 @@ class Tensor(Value):
     def backward(self, out_grad=None) -> None:
         out_grad = out_grad if out_grad else \
                    init.ones(*self.shape, dtype=self.dtype, device=self.device)
+        # NOTE: self.xxx (e.g. self.shape) will call self.realize_cache_data()
         compute_gradient_of_variables(self, out_grad)
 
     def __repr__(self):
@@ -395,8 +414,11 @@ def compute_gradient_of_variables(output_tensor: Tensor, out_grad: Tensor) -> No
 
     ### BEGIN YOUR SOLUTION
     for vj in reverse_topo_order:
-        # vj.grad: vj_adjoint
-        vj.grad = sum_node_list(node_to_output_grads_list[vj])
+        # NOTE: in needle, as long as a tensor is attached (through inputs) to the computation graph,
+        #       the system will calculate its gradient (no matter what value is in requires_grad).
+        #       the only way to avoid calculating gradient in needle is to
+        #       detach a tensor from the computation graph (by setting its inputs to [])
+        vj.grad = sum_node_list(node_to_output_grads_list[vj])  # vj.grad: vj_adjoint
         if vj.is_leaf(): continue  # leaf node does not have any op or input
         partial_adjoints: Tuple[Tensor]
         partial_adjoints = vj.op.gradient_as_tuple(out_grad=vj.grad, node=vj)
