@@ -8,8 +8,7 @@ a = ndl.Tensor([1,2,3], requires_grad=False)
 b = ndl.Tensor([4,5,6], requires_grad=False)
 c = a + b
 d = a + c
-res = c * d
-# res = d.sum(axes=(0))
+res = (c * d).sum()
 
 print("=========================")
 print(f"        a : {str(id(a))[-6:]}")
@@ -31,7 +30,7 @@ for n in s:
     print(f"{str(id(n))[-6:]}: {n.cached_data is None}")
 print()
 
-res.backward(out_grad=ndl.Tensor([1,1,1]))
+res.backward()
 
 for n in s:
     print(f"{str(id(n))[-6:]}: {n.cached_data is None}")
@@ -50,3 +49,7 @@ print(f"   d.grad : {str(id(d.grad))[-6:]}, {d.grad is not None}")
 print(f" res.grad : {str(id(res.grad))[-6:]}, {res.grad is not None}")
 print("=========================")
 print()
+
+print(f"a.grad: {a.grad}")
+res.backward()
+print(f"a.grad: {a.grad}")
