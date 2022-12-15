@@ -440,8 +440,9 @@ def get_batch(batches, i, bptt, device=None, dtype=None):
     target - Tensor of shape (bptt*bs,) with cached data as NDArray
     """
     ### BEGIN YOUR SOLUTION
-    X = batches[i:i+bptt, :]
-    y = batches[i+1:i+1+bptt,:]
+    seq_len = min(bptt, batches.shape[0]-1-i)
+    X = batches[i:i+seq_len, :]
+    y = batches[i+1:i+1+seq_len,:]
     return Tensor(X, device=device, dtype=dtype, requires_grad=False), \
-           Tensor(y.flatten(order='F'), device=device, dtype=dtype, requires_grad=False)
+           Tensor(y.flatten(), device=device, dtype=dtype, requires_grad=False)
     ### END YOUR SOLUTION
