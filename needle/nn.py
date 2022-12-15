@@ -615,21 +615,29 @@ class Embedding(Module):
             initialized from N(0, 1).
         """
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        self.num_embeddings = num_embeddings
+        self.embedding_dim  = embedding_dim
+        self.factory_kwargs = {"device": device, "dtype": dtype}
+        self.weight = Parameter(init.randn(num_embeddings, embedding_dim), **self.factory_kwargs)
         ### END YOUR SOLUTION
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, X: Tensor) -> Tensor:
         """
         Maps word indices to one-hot vectors, and projects to embedding vectors
 
         Input:
-        x of shape (seq_len, bs)
+        X of shape (seq_len, bs)
 
         Output:
         output of shape (seq_len, bs, embedding_dim)
         """
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        seq_len, batch_size = X.shape
+        X_one_hot = init.one_hot(self.num_embeddings, X, **self.factory_kwargs)
+        return (
+            (X_one_hot.reshape((-1,self.num_embeddings)) @ self.weight)
+            .reshape((seq_len, batch_size, -1))
+        )
         ### END YOUR SOLUTION
 
 # %% main
